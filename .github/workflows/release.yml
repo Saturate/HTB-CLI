@@ -13,12 +13,18 @@ jobs:
       version: ${{ steps.knope.outputs.version }}
       should_release: ${{ steps.knope.outputs.should_release }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.SATURATE_CI_APP_ID }}
+          private-key: ${{ secrets.SATURATE_CI_PRIVATE_KEY }}
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.PAT }}
+          token: ${{ steps.app-token.outputs.token }}
 
-      - uses: knope-dev/action@v2.1.0
+      - uses: knope-dev/action@407e9ef7c272d2dd53a4e71e39a7839e29933c48 # v2.1.0
         with:
           version: 0.23.0
 
@@ -38,7 +44,7 @@ jobs:
         if: steps.knope.outputs.should_release == 'true'
         run: knope release
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
   build:
     needs: prepare
@@ -65,11 +71,19 @@ jobs:
             archive: htb-macos-aarch64.tar.gz
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.SATURATE_CI_APP_ID }}
+          private-key: ${{ secrets.SATURATE_CI_PRIVATE_KEY }}
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: v${{ needs.prepare.outputs.version }}
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: "1.97"
         with:
           targets: ${{ matrix.target }}
 
@@ -95,4 +109,22 @@ jobs:
         run: |
           gh release upload v${{ needs.prepare.outputs.version }} ${{ matrix.archive }}
         env:
-          GH_TOKEN: ${{ secrets.PAT }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+  publish:
+    needs: [prepare, build]
+    if: needs.prepare.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: v${{ needs.prepare.outputs.version }}
+
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: "1.97"
+
+      - name: Publish to crates.io
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

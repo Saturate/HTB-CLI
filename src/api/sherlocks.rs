@@ -24,7 +24,8 @@ impl SherlockApi<'_> {
     }
 
     pub async fn info(&self, slug: &str) -> Result<Sherlock, HtbError> {
-        self.0.get(&format!("/api/v4/sherlocks/{slug}")).await
+        let encoded = super::encode_path(slug);
+        self.0.get(&format!("/api/v4/sherlocks/{encoded}")).await
     }
 
     pub async fn download_link(&self, sherlock_id: u64) -> Result<String, HtbError> {

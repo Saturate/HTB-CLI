@@ -2,6 +2,7 @@
 name = "htb-cli"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.97"
 description = "Hack The Box CLI"
 license = "MIT"
 repository = "https://github.com/Saturate/HTB-CLI"

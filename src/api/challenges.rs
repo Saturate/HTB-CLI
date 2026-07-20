@@ -27,9 +27,10 @@ impl ChallengeApi<'_> {
     }
 
     pub async fn info(&self, slug: &str) -> Result<ChallengeDetail, HtbError> {
+        let encoded = super::encode_path(slug);
         let resp: ChallengeDetailResponse = self
             .0
-            .get(&format!("/api/v4/challenge/info/{slug}"))
+            .get(&format!("/api/v4/challenge/info/{encoded}"))
             .await?;
         Ok(resp.challenge)
     }

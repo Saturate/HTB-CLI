@@ -18,9 +18,10 @@ impl MachineApi<'_> {
     }
 
     pub async fn profile(&self, name_or_id: &str) -> Result<Machine, HtbError> {
+        let encoded = super::encode_path(name_or_id);
         let resp: MachineProfileResponse = self
             .0
-            .get(&format!("/api/v4/machine/profile/{name_or_id}"))
+            .get(&format!("/api/v4/machine/profile/{encoded}"))
             .await?;
         Ok(resp.info)
     }
