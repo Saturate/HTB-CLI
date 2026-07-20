@@ -103,7 +103,7 @@ pub async fn handle(
             let sherlock = client.sherlocks().info(&slug).await?;
             let url = client.sherlocks().download_link(sherlock.id).await?;
             let bytes = client.challenges().download_file(&url).await?;
-            let filename = format!("{slug}.zip");
+            let filename = crate::sanitize_filename(&format!("{slug}.zip"), &format!("{slug}.zip"));
             std::fs::write(&filename, &bytes)?;
             output::print_message(&format!("Downloaded {} ({} bytes)", filename, bytes.len()));
         }

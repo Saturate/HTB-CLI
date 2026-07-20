@@ -119,7 +119,8 @@ pub async fn handle(
             let detail = client.challenges().info(&slug).await?;
             let url = client.challenges().download_link(detail.id).await?;
             let bytes = client.challenges().download_file(&url).await?;
-            let filename = detail.file_name.unwrap_or_else(|| format!("{slug}.zip"));
+            let raw_name = detail.file_name.unwrap_or_else(|| format!("{slug}.zip"));
+            let filename = crate::sanitize_filename(&raw_name, &format!("{slug}.zip"));
             std::fs::write(&filename, &bytes)?;
             output::print_message(&format!("Downloaded {} ({} bytes)", filename, bytes.len()));
         }

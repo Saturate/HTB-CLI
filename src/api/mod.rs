@@ -169,6 +169,10 @@ impl HtbClient {
             return Err(HtbError::NotAuthenticated);
         }
 
+        if status == 429 {
+            return Err(HtbError::RateLimited);
+        }
+
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
             let message = serde_json::from_str::<ApiErrorBody>(&body)
@@ -189,8 +193,18 @@ impl HtbClient {
     async fn wait_for_rate_limit(&self) {
         let remaining = self.rate_limit.remaining();
         if remaining == 0 && self.rate_limit.limit() != u32::MAX {
-            tracing::warn!("Rate limit exhausted, backing off");
-            tokio::time::sleep(Duration::from_secs(2)).await;
+            let delays = [2, 5, 10, 20, 30];
+            for (i, secs) in delays.iter().enumerate() {
+                tracing::warn!(
+                    attempt = i + 1,
+                    delay_secs = secs,
+                    "Rate limit exhausted, backing off"
+                );
+                tokio::time::sleep(Duration::from_secs(*secs)).await;
+                if self.rate_limit.remaining() > 0 {
+                    break;
+                }
+            }
         }
     }
 
