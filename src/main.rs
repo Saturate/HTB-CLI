@@ -36,7 +36,17 @@ async fn main() {
         .with_ansi(!cli.no_color)
         .init();
 
-    let cfg = config::HtbConfig::load(cli.config.as_deref()).unwrap_or_default();
+    let cfg = match config::HtbConfig::load(cli.config.as_deref()) {
+        Ok(c) => c,
+        Err(e) => {
+            if cli.config.is_some() {
+                eprintln!("Error: failed to load config: {e}");
+                std::process::exit(1);
+            }
+            tracing::debug!("Using default config: {e}");
+            config::HtbConfig::default()
+        }
+    };
 
     let format = if cli.json {
         OutputFormat::Json
