@@ -9,7 +9,9 @@ use crate::api::HtbClient;
 pub struct ListMachinesParams {
     #[schemars(description = "Filter by OS (e.g. 'linux', 'windows'). Omit to list all.")]
     pub os: Option<String>,
-    #[schemars(description = "Filter by difficulty (e.g. 'easy', 'medium', 'hard', 'insane'). Omit to list all.")]
+    #[schemars(
+        description = "Filter by difficulty (e.g. 'easy', 'medium', 'hard', 'insane'). Omit to list all."
+    )]
     pub difficulty: Option<String>,
     #[schemars(description = "Page number (default 1)")]
     pub page: Option<u32>,
@@ -23,7 +25,9 @@ pub struct MachineInfoParams {
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct ListChallengesParams {
-    #[schemars(description = "Filter by category (e.g. 'Web', 'Crypto', 'Reversing'). Omit to list all.")]
+    #[schemars(
+        description = "Filter by category (e.g. 'Web', 'Crypto', 'Reversing'). Omit to list all."
+    )]
     pub category: Option<String>,
     #[schemars(description = "Page number (default 1)")]
     pub page: Option<u32>,
@@ -83,20 +87,39 @@ fn to_json<T: serde::Serialize>(value: &T) -> Result<String, String> {
 
 #[tool_router]
 impl HtbMcp {
-    #[tool(description = "Get the current authenticated user's profile info including rank, owns, and points.")]
+    #[tool(
+        description = "Get the current authenticated user's profile info including rank, owns, and points."
+    )]
     async fn get_user_profile(&self) -> Result<String, String> {
-        let info = self.client.user().current().await.map_err(|e| e.to_string())?;
-        let profile = self.client.user().profile(info.id).await.map_err(|e| e.to_string())?;
+        let info = self
+            .client
+            .user()
+            .current()
+            .await
+            .map_err(|e| e.to_string())?;
+        let profile = self
+            .client
+            .user()
+            .profile(info.id)
+            .await
+            .map_err(|e| e.to_string())?;
         to_json(&profile)
     }
 
-    #[tool(description = "List machines on Hack The Box. Optionally filter by OS and difficulty. Returns name, OS, difficulty, rating, state, and own status.")]
+    #[tool(
+        description = "List machines on Hack The Box. Optionally filter by OS and difficulty. Returns name, OS, difficulty, rating, state, and own status."
+    )]
     async fn list_machines(
         &self,
         Parameters(params): Parameters<ListMachinesParams>,
     ) -> Result<String, String> {
         let page = params.page.unwrap_or(1);
-        let result = self.client.machines().list(page, 100).await.map_err(|e| e.to_string())?;
+        let result = self
+            .client
+            .machines()
+            .list(page, 100)
+            .await
+            .map_err(|e| e.to_string())?;
         let mut machines = result.data;
 
         if let Some(ref os) = params.os {
@@ -104,7 +127,9 @@ impl HtbMcp {
         }
         if let Some(ref diff) = params.difficulty {
             machines.retain(|m| {
-                m.difficulty_text.as_ref().is_some_and(|d| d.eq_ignore_ascii_case(diff))
+                m.difficulty_text
+                    .as_ref()
+                    .is_some_and(|d| d.eq_ignore_ascii_case(diff))
             });
         }
 
@@ -147,18 +172,27 @@ impl HtbMcp {
         to_json(&machine)
     }
 
-    #[tool(description = "List challenges on Hack The Box. Optionally filter by category. Returns name, difficulty, category, solves, and own status.")]
+    #[tool(
+        description = "List challenges on Hack The Box. Optionally filter by category. Returns name, difficulty, category, solves, and own status."
+    )]
     async fn list_challenges(
         &self,
         Parameters(params): Parameters<ListChallengesParams>,
     ) -> Result<String, String> {
         let page = params.page.unwrap_or(1);
-        let result = self.client.challenges().list(page, 100).await.map_err(|e| e.to_string())?;
+        let result = self
+            .client
+            .challenges()
+            .list(page, 100)
+            .await
+            .map_err(|e| e.to_string())?;
         let mut challenges = result.data;
 
         if let Some(ref cat) = params.category {
             challenges.retain(|c| {
-                c.category_name.as_ref().is_some_and(|cn| cn.eq_ignore_ascii_case(cat))
+                c.category_name
+                    .as_ref()
+                    .is_some_and(|cn| cn.eq_ignore_ascii_case(cat))
             });
         }
 
@@ -230,7 +264,12 @@ impl HtbMcp {
 
     #[tool(description = "Show the currently active/spawned machine, if any.")]
     async fn get_active_machine(&self) -> Result<String, String> {
-        let active = self.client.machines().active().await.map_err(|e| e.to_string())?;
+        let active = self
+            .client
+            .machines()
+            .active()
+            .await
+            .map_err(|e| e.to_string())?;
         match active {
             Some(vm) => to_json(&vm),
             None => Ok(r#"{"active": false, "message": "No active machine"}"#.to_string()),
@@ -239,16 +278,23 @@ impl HtbMcp {
 
     #[tool(description = "List all seasons and show which is currently active.")]
     async fn list_seasons(&self) -> Result<String, String> {
-        let seasons = self.client.seasons().list().await.map_err(|e| e.to_string())?;
+        let seasons = self
+            .client
+            .seasons()
+            .list()
+            .await
+            .map_err(|e| e.to_string())?;
         to_json(&seasons)
     }
 
     #[tool(description = "Search across machines, challenges, and users on Hack The Box.")]
-    async fn search(
-        &self,
-        Parameters(params): Parameters<SearchParams>,
-    ) -> Result<String, String> {
-        let results = self.client.search().fetch(&params.query).await.map_err(|e| e.to_string())?;
+    async fn search(&self, Parameters(params): Parameters<SearchParams>) -> Result<String, String> {
+        let results = self
+            .client
+            .search()
+            .fetch(&params.query)
+            .await
+            .map_err(|e| e.to_string())?;
         to_json(&results)
     }
 }
