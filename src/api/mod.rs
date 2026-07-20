@@ -6,6 +6,18 @@ pub mod sherlocks;
 pub mod user;
 pub mod vpn;
 
+pub fn encode_path(s: &str) -> String {
+    s.bytes()
+        .flat_map(|b| {
+            if b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.' || b == b'~' {
+                vec![b as char]
+            } else {
+                format!("%{b:02X}").chars().collect()
+            }
+        })
+        .collect()
+}
+
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
