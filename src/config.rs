@@ -71,12 +71,23 @@ pub fn save_token(token: &str) -> anyhow::Result<()> {
     fs::create_dir_all(&dir)?;
 
     let path = token_path();
-    fs::write(&path, token)?;
 
     #[cfg(unix)]
     {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o600))?;
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        let mut f = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(&path)?;
+        f.write_all(token.as_bytes())?;
+    }
+
+    #[cfg(not(unix))]
+    {
+        fs::write(&path, token)?;
     }
 
     Ok(())
