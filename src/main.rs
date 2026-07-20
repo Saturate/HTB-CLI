@@ -20,7 +20,7 @@ pub fn sanitize_filename(raw: &str, fallback: &str) -> String {
 use cli::{Cli, Command};
 use output::OutputFormat;
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let cli = Cli::parse();
 
