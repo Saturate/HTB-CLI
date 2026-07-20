@@ -4,6 +4,7 @@ use crate::api::HtbClient;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
+#[command(after_help = "Examples:\n  htb machines list --os linux          Linux machines only\n  htb machines list --difficulty easy    Easy machines only\n  htb machines info Bedside             Machine details\n  htb machines start Bedside            Spawn a machine\n  htb machines submit Bedside 'HTB{f}'  Submit a flag\n  htb machines active                   Current machine\n  htb machines todo                     Your todo list")]
 pub enum MachineCommand {
     /// List machines
     List {

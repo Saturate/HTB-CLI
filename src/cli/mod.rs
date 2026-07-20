@@ -12,7 +12,13 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "htb", version, about = "Hack The Box CLI")]
+#[command(
+    name = "htb",
+    version,
+    about = "Hack The Box CLI",
+    long_about = "Hack The Box CLI - interact with the HTB platform from your terminal.\n\nQuery machines, challenges, Sherlocks, and seasons. Spawn instances, submit flags, manage VPN connections.",
+    after_help = "Examples:\n  htb auth login                              Save your API token\n  htb machines list --os linux --difficulty easy   Filter machines\n  htb machines start Bedside                  Spawn a machine\n  htb challenges list --category Web          Browse web challenges\n  htb challenges submit 1018 'HTB{flag}'      Submit a challenge flag\n  htb vpn list                                Show VPN servers\n  htb user me                                 View your profile\n  htb search nmap                             Search across all content"
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
