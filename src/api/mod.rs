@@ -130,13 +130,21 @@ impl HtbClient {
         self.handle_response(resp).await
     }
 
-    pub async fn get_bytes(&self, path: &str) -> Result<Vec<u8>, HtbError> {
+    pub async fn get_bytes(&self, url_or_path: &str) -> Result<Vec<u8>, HtbError> {
         self.wait_for_rate_limit().await;
 
-        let url = format!("{}{}", self.base_url, path);
+        let is_absolute = url_or_path.starts_with("http://") || url_or_path.starts_with("https://");
+        let url = if is_absolute {
+            url_or_path.to_string()
+        } else {
+            format!("{}{}", self.base_url, url_or_path)
+        };
         tracing::debug!(url = %url, "GET (bytes)");
 
-        let resp = self.http.get(&url).bearer_auth(&self.token).send().await?;
+        // Only attach auth token for same-origin requests
+        let req = self.http.get(&url);
+        let req = if is_absolute { req } else { req.bearer_auth(&self.token) };
+        let resp = req.send().await?;
 
         self.rate_limit.update(resp.headers());
         self.log_rate_limit();
@@ -144,6 +152,9 @@ impl HtbClient {
         let status = resp.status();
         if status == 401 {
             return Err(HtbError::NotAuthenticated);
+        }
+        if status == 429 {
+            return Err(HtbError::RateLimited);
         }
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
@@ -193,18 +204,10 @@ impl HtbClient {
     async fn wait_for_rate_limit(&self) {
         let remaining = self.rate_limit.remaining();
         if remaining == 0 && self.rate_limit.limit() != u32::MAX {
-            let delays = [2, 5, 10, 20, 30];
-            for (i, secs) in delays.iter().enumerate() {
-                tracing::warn!(
-                    attempt = i + 1,
-                    delay_secs = secs,
-                    "Rate limit exhausted, backing off"
-                );
-                tokio::time::sleep(Duration::from_secs(*secs)).await;
-                if self.rate_limit.remaining() > 0 {
-                    break;
-                }
-            }
+            // Single-threaded runtime; no concurrent task will update the atomic
+            // while we sleep. Wait once and let the next response refresh the state.
+            tracing::warn!("Rate limit exhausted, waiting 5s before next request");
+            tokio::time::sleep(Duration::from_secs(5)).await;
         }
     }
 

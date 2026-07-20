@@ -33,13 +33,23 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_target(false)
+        .with_ansi(!cli.no_color)
         .init();
+
+    let cfg = config::HtbConfig::load(cli.config.as_deref()).unwrap_or_default();
 
     let format = if cli.json {
         OutputFormat::Json
     } else {
-        OutputFormat::Table
+        match cfg.output.as_str() {
+            "json" => OutputFormat::Json,
+            _ => OutputFormat::Table,
+        }
     };
+
+    if cli.no_color || cfg.no_color {
+        std::env::set_var("NO_COLOR", "1");
+    }
 
     if let Err(e) = run(cli.command, format).await {
         eprintln!("Error: {e}");
