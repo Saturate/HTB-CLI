@@ -1,0 +1,28 @@
+[package]
+versioned_files = ["Cargo.toml"]
+changelog = "CHANGELOG.md"
+
+[[package.assets]]
+name = "htb-linux-x86_64.tar.gz"
+
+[[package.assets]]
+name = "htb-linux-aarch64.tar.gz"
+
+[[package.assets]]
+name = "htb-macos-x86_64.tar.gz"
+
+[[package.assets]]
+name = "htb-macos-aarch64.tar.gz"
+
+[[workflows]]
+name = "release"
+
+[[workflows.steps]]
+type = "PrepareRelease"
+
+[[workflows.steps]]
+type = "Command"
+command = "git add -A && git commit -m 'chore: prepare release'"
+
+[[workflows.steps]]
+type = "Release"

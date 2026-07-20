@@ -1,2 +1,8 @@
-// Search is handled directly in cli/mod.rs as a simple Command variant.
-// This module will hold the handler when implemented.
+use crate::api::HtbClient;
+use crate::output;
+
+pub async fn handle(client: &HtbClient, query: &str) -> anyhow::Result<()> {
+    let results = client.search().fetch(query).await?;
+    output::json::print_json(&results);
+    Ok(())
+}

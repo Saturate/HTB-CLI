@@ -1,6 +1,11 @@
 use serde::Deserialize;
 
+pub mod challenge;
+pub mod machine;
+pub mod season;
+pub mod sherlock;
 pub mod user;
+pub mod vpn;
 
 #[derive(Debug, Deserialize)]
 pub struct Paginated<T> {

@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.knope.outputs.version }}
+      should_release: ${{ steps.knope.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT }}
+
+      - uses: knope-dev/action@v2.1.0
+        with:
+          version: 0.23.0
+
+      - name: Prepare release
+        id: knope
+        run: |
+          knope release --dry-run 2>&1 | tee /tmp/knope-output.txt || true
+          VERSION=$(grep -oP 'Bumping version to \K[0-9]+\.[0-9]+\.[0-9]+' /tmp/knope-output.txt || echo "")
+          if [ -n "$VERSION" ]; then
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run knope release
+        if: steps.knope.outputs.should_release == 'true'
+        run: knope release
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.should_release == 'true'
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            binary: htb
+            archive: htb-linux-x86_64.tar.gz
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            binary: htb
+            archive: htb-linux-aarch64.tar.gz
+            cross: true
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            binary: htb
+            archive: htb-macos-x86_64.tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            binary: htb
+            archive: htb-macos-aarch64.tar.gz
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross
+        if: matrix.cross
+        run: cargo install cross --locked
+
+      - name: Build
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+
+      - name: Package
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ../../../${{ matrix.archive }} ${{ matrix.binary }}
+          cd ../../..
+
+      - name: Upload to release
+        run: |
+          gh release upload v${{ needs.prepare.outputs.version }} ${{ matrix.archive }}
+        env:
+          GH_TOKEN: ${{ secrets.PAT }}

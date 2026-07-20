@@ -1,4 +1,10 @@
+pub mod challenges;
+pub mod machines;
+pub mod search;
+pub mod seasons;
+pub mod sherlocks;
 pub mod user;
+pub mod vpn;
 
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
@@ -98,12 +104,7 @@ impl HtbClient {
         let url = format!("{}{}", self.base_url, path);
         tracing::debug!(url = %url, "GET");
 
-        let resp = self
-            .http
-            .get(&url)
-            .bearer_auth(&self.token)
-            .send()
-            .await?;
+        let resp = self.http.get(&url).bearer_auth(&self.token).send().await?;
 
         self.handle_response(resp).await
     }
@@ -135,12 +136,7 @@ impl HtbClient {
         let url = format!("{}{}", self.base_url, path);
         tracing::debug!(url = %url, "GET (bytes)");
 
-        let resp = self
-            .http
-            .get(&url)
-            .bearer_auth(&self.token)
-            .send()
-            .await?;
+        let resp = self.http.get(&url).bearer_auth(&self.token).send().await?;
 
         self.rate_limit.update(resp.headers());
         self.log_rate_limit();
@@ -208,6 +204,30 @@ impl HtbClient {
 
     pub fn user(&self) -> user::UserApi<'_> {
         user::UserApi(self)
+    }
+
+    pub fn machines(&self) -> machines::MachineApi<'_> {
+        machines::MachineApi(self)
+    }
+
+    pub fn challenges(&self) -> challenges::ChallengeApi<'_> {
+        challenges::ChallengeApi(self)
+    }
+
+    pub fn sherlocks(&self) -> sherlocks::SherlockApi<'_> {
+        sherlocks::SherlockApi(self)
+    }
+
+    pub fn seasons(&self) -> seasons::SeasonApi<'_> {
+        seasons::SeasonApi(self)
+    }
+
+    pub fn vpn(&self) -> vpn::VpnApi<'_> {
+        vpn::VpnApi(self)
+    }
+
+    pub fn search(&self) -> search::SearchApi<'_> {
+        search::SearchApi(self)
     }
 }
 

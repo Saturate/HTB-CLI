@@ -47,28 +47,34 @@ async fn run(command: Command, format: OutputFormat) -> anyhow::Result<()> {
             cli::machines::handle(&client, command, format).await
         }
 
-        Command::Challenges { command: _ } => {
-            anyhow::bail!("Challenges commands not yet implemented")
+        Command::Challenges { command } => {
+            let client = authenticated_client()?;
+            cli::challenges::handle(&client, command, format).await
         }
 
-        Command::Seasons { command: _ } => {
-            anyhow::bail!("Seasons commands not yet implemented")
+        Command::Seasons { command } => {
+            let client = authenticated_client()?;
+            cli::seasons::handle(&client, command, format).await
         }
 
-        Command::Sherlocks { command: _ } => {
-            anyhow::bail!("Sherlocks commands not yet implemented")
+        Command::Sherlocks { command } => {
+            let client = authenticated_client()?;
+            cli::sherlocks::handle(&client, command, format).await
         }
 
-        Command::Vpn { command: _ } => {
-            anyhow::bail!("VPN commands not yet implemented")
+        Command::Vpn { command } => {
+            let client = authenticated_client()?;
+            cli::vpn::handle(&client, command, format).await
         }
 
-        Command::User { command: _ } => {
-            anyhow::bail!("User commands not yet implemented")
+        Command::User { command } => {
+            let client = authenticated_client()?;
+            cli::user::handle(&client, command, format).await
         }
 
-        Command::Search { query: _ } => {
-            anyhow::bail!("Search not yet implemented")
+        Command::Search { query } => {
+            let client = authenticated_client()?;
+            cli::search::handle(&client, &query).await
         }
     }
 }

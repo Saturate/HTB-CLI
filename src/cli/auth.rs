@@ -34,7 +34,11 @@ async fn login() -> anyhow::Result<()> {
     let user = client.user().current().await?;
 
     crate::config::save_token(&token)?;
-    println!("Authenticated as {} ({})", user.name, if user.is_vip { "VIP" } else { "Free" });
+    println!(
+        "Authenticated as {} ({})",
+        user.name,
+        if user.is_vip { "VIP" } else { "Free" }
+    );
     Ok(())
 }
 
@@ -46,7 +50,12 @@ async fn status(format: OutputFormat) -> anyhow::Result<()> {
     let fields = vec![
         ("Username", user.name.clone()),
         ("ID", user.id.to_string()),
-        ("Subscription", user.subscription_type.clone().unwrap_or_else(|| "Free".into())),
+        (
+            "Subscription",
+            user.subscription_type
+                .clone()
+                .unwrap_or_else(|| "Free".into()),
+        ),
         ("VIP", if user.is_vip { "Yes" } else { "No" }.into()),
         ("Verified", if user.verified { "Yes" } else { "No" }.into()),
     ];
