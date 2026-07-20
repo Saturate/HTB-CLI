@@ -143,7 +143,11 @@ impl HtbClient {
 
         // Only attach auth token for same-origin requests
         let req = self.http.get(&url);
-        let req = if is_absolute { req } else { req.bearer_auth(&self.token) };
+        let req = if is_absolute {
+            req
+        } else {
+            req.bearer_auth(&self.token)
+        };
         let resp = req.send().await?;
 
         self.rate_limit.update(resp.headers());

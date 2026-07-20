@@ -4,7 +4,9 @@ use crate::api::HtbClient;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
-#[command(after_help = "Examples:\n  htb machines list --os linux          Linux machines only\n  htb machines list --difficulty easy    Easy machines only\n  htb machines info Bedside             Machine details\n  htb machines start Bedside            Spawn a machine\n  htb machines submit Bedside 'HTB{f}'  Submit a flag\n  htb machines active                   Current machine\n  htb machines todo                     Your todo list")]
+#[command(
+    after_help = "Examples:\n  htb machines list --os linux          Linux machines only\n  htb machines list --difficulty easy    Easy machines only\n  htb machines info Bedside             Machine details\n  htb machines start Bedside            Spawn a machine\n  htb machines submit Bedside 'HTB{f}'  Submit a flag\n  htb machines active                   Current machine\n  htb machines todo                     Your todo list"
+)]
 pub enum MachineCommand {
     /// List machines
     List {
@@ -80,7 +82,9 @@ pub async fn handle(
             all,
         } => {
             if retired {
-                tracing::warn!("--retired flag is not yet supported by the v5 API; showing all machines");
+                tracing::warn!(
+                    "--retired flag is not yet supported by the v5 API; showing all machines"
+                );
             }
             let per_page = 100;
             let start_page = page.unwrap_or(1);
@@ -182,7 +186,10 @@ pub async fn handle(
             let machine = client.machines().profile(&name_or_id).await?;
             // difficulty field from the machine profile (0-100 scale)
             let difficulty = machine.difficulty.unwrap_or(50);
-            let resp = client.machines().submit_flag(machine.id, &flag, difficulty).await?;
+            let resp = client
+                .machines()
+                .submit_flag(machine.id, &flag, difficulty)
+                .await?;
             output::print_message(&resp.message);
         }
 

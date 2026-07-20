@@ -4,7 +4,9 @@ use crate::api::HtbClient;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
-#[command(after_help = "Examples:\n  htb challenges list --category Web     Web challenges\n  htb challenges categories              All categories\n  htb challenges info Poly               Challenge details\n  htb challenges start Poly              Start container instance\n  htb challenges submit 112 'HTB{f}'     Submit a flag\n  htb challenges download Poly           Download challenge files")]
+#[command(
+    after_help = "Examples:\n  htb challenges list --category Web     Web challenges\n  htb challenges categories              All categories\n  htb challenges info Poly               Challenge details\n  htb challenges start Poly              Start container instance\n  htb challenges submit 112 'HTB{f}'     Submit a flag\n  htb challenges download Poly           Download challenge files"
+)]
 pub enum ChallengeCommand {
     /// List challenges
     List {
