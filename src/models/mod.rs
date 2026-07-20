@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 pub mod challenge;
 pub mod machine;
@@ -32,7 +32,7 @@ pub struct PaginationMeta {
     pub total: u32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ActionResponse {
     pub message: String,
 }

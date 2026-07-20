@@ -2,6 +2,7 @@ pub mod api;
 pub mod cli;
 pub mod config;
 pub mod error;
+pub mod mcp;
 pub mod models;
 pub mod output;
 
@@ -22,6 +23,15 @@ use output::OutputFormat;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
+    // Check for --mcp-stdio before clap parsing (it's a mode switch, not a subcommand)
+    if std::env::args().any(|a| a == "--mcp-stdio") {
+        if let Err(e) = mcp::run_stdio().await {
+            eprintln!("MCP error: {e}");
+            std::process::exit(1);
+        }
+        return;
+    }
+
     let cli = Cli::parse();
 
     let filter = if cli.verbose {

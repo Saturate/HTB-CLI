@@ -19,6 +19,7 @@ use crate::error::{ApiErrorBody, HtbError};
 const BASE_URL: &str = "https://labs.hackthebox.com";
 const USER_AGENT: &str = concat!("htb-cli/", env!("CARGO_PKG_VERSION"));
 
+#[derive(Clone)]
 pub struct HtbClient {
     http: reqwest::Client,
     base_url: String,

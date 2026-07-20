@@ -109,14 +109,14 @@ pub struct ChallengeDownloadResponse {
     pub expires_in: Option<u64>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ChallengeOwnResponse {
     pub message: String,
     #[serde(default)]
     pub user_rank: Option<ChallengeOwnRank>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ChallengeOwnRank {
     #[serde(default)]
     pub changed: bool,
