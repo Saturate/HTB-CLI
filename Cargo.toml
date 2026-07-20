@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2021"
 description = "Hack The Box CLI"
 license = "MIT"
+repository = "https://github.com/Saturate/HTB-CLI"
+homepage = "https://github.com/Saturate/HTB-CLI"
+keywords = ["hackthebox", "htb", "ctf", "pentesting", "security"]
+categories = ["command-line-utilities"]
+readme = "README.md"
 
 [[bin]]
 name = "htb"
