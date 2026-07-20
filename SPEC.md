@@ -252,7 +252,29 @@ impl HtbClient {
 }
 ```
 
-Sub-API structs borrow the client. Each method maps 1:1 to an endpoint. Base URL: `https://labs.hackthebox.com/api/v4`.
+Sub-API structs borrow the client. Each method maps 1:1 to an endpoint. Base URL: `https://labs.hackthebox.com/api/v4` (some endpoints use `/api/v5`).
+
+## Rate Limiting
+
+The API returns rate limit headers on every response:
+- `x-ratelimit-limit`: max requests per window
+- `x-ratelimit-remaining`: requests left in current window
+
+Limits vary by endpoint (15-60 per window). The client tracks remaining quota
+from response headers and delays requests when nearing the limit. No need to
+spam the API when we know the ceiling.
+
+```rust
+pub struct RateLimitState {
+    remaining: AtomicU32,
+    limit: AtomicU32,
+}
+```
+
+On each response, update from headers. Before each request, check remaining > 0.
+If exhausted, wait and retry with backoff (reuse the exponential backoff pattern
+from ridgeline's AzureDevOpsClient). Surface the limit to the user:
+`Rate limited (14/25 remaining)` in verbose mode.
 
 ## Config
 
