@@ -154,12 +154,12 @@ impl HtbClient {
         };
         tracing::debug!(url = %url, "GET (bytes)");
 
-        // Only attach auth token for same-origin requests
+        let same_origin = url.starts_with(&format!("{}/", self.base_url));
         let req = self.http.get(&url);
-        let req = if is_absolute {
-            req
-        } else {
+        let req = if same_origin {
             req.bearer_auth(&self.token)
+        } else {
+            req
         };
         let resp = req.send().await?;
 
