@@ -20,7 +20,11 @@ pub struct UserInfo {
     pub is_vip: bool,
     #[serde(default, deserialize_with = "deserialize_bool_or_null")]
     pub is_moderator: bool,
-    #[serde(default, deserialize_with = "deserialize_bool_or_null")]
+    #[serde(
+        default,
+        rename = "canAccessVIP",
+        deserialize_with = "deserialize_bool_or_null"
+    )]
     pub can_access_vip: bool,
     #[serde(default)]
     pub server_id: Option<u32>,
@@ -90,6 +94,14 @@ mod tests {
         assert_eq!(resp.info.name, "TestUser");
         assert!(!resp.info.is_vip);
         assert_eq!(resp.info.id, 1234567);
+    }
+
+    #[test]
+    fn deserialize_user_info_vip_fields() {
+        let json = r#"{"info":{"id":1,"name":"VipUser","canAccessVIP":true,"isVip":true}}"#;
+        let resp: UserInfoResponse = serde_json::from_str(json).unwrap();
+        assert!(resp.info.can_access_vip);
+        assert!(resp.info.is_vip);
     }
 
     #[test]
