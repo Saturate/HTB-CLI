@@ -26,6 +26,7 @@ use reqwest::header::HeaderMap;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
+use crate::cache::Cache;
 use crate::error::{ApiErrorBody, HtbError};
 
 const BASE_URL: &str = "https://labs.hackthebox.com";
@@ -37,6 +38,7 @@ pub struct HtbClient {
     base_url: String,
     token: String,
     rate_limit: Arc<RateLimitState>,
+    cache: Option<Arc<Cache>>,
 }
 
 struct RateLimitState {
@@ -81,22 +83,23 @@ impl RateLimitState {
 
 impl HtbClient {
     pub fn new(token: String) -> Self {
-        let http = reqwest::Client::builder()
-            .user_agent(USER_AGENT)
-            .timeout(Duration::from_secs(30))
-            .build()
-            .expect("failed to build HTTP client");
+        Self::build(token, BASE_URL.to_string(), None)
+    }
 
-        Self {
-            http,
-            base_url: BASE_URL.to_string(),
-            token,
-            rate_limit: Arc::new(RateLimitState::new()),
-        }
+    pub fn with_cache(token: String, cache: Cache) -> Self {
+        Self::build(token, BASE_URL.to_string(), Some(Arc::new(cache)))
+    }
+
+    pub fn with_cache_arc(token: String, cache: Arc<Cache>) -> Self {
+        Self::build(token, BASE_URL.to_string(), Some(cache))
     }
 
     #[cfg(test)]
     pub fn with_base_url(token: String, base_url: String) -> Self {
+        Self::build(token, base_url, None)
+    }
+
+    fn build(token: String, base_url: String, cache: Option<Arc<Cache>>) -> Self {
         let http = reqwest::Client::builder()
             .user_agent(USER_AGENT)
             .timeout(Duration::from_secs(30))
@@ -108,18 +111,35 @@ impl HtbClient {
             base_url,
             token,
             rate_limit: Arc::new(RateLimitState::new()),
+            cache,
         }
     }
 
     pub async fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T, HtbError> {
-        self.wait_for_rate_limit().await;
-
         let url = format!("{}{}", self.base_url, path);
+
+        if let Some(max_age) = self.ttl_for_path(path) {
+            if let Some(cache) = &self.cache {
+                if let Some(body) = cache.get(&url, max_age) {
+                    return Ok(serde_json::from_str(&body)?);
+                }
+            }
+        }
+
+        self.wait_for_rate_limit().await;
         tracing::debug!(url = %url, "GET");
-
         let resp = self.http.get(&url).bearer_auth(&self.token).send().await?;
+        let body = self.handle_response_raw(resp).await?;
 
-        self.handle_response(resp).await
+        if let Some(max_age) = self.ttl_for_path(path) {
+            if max_age > Duration::ZERO {
+                if let Some(cache) = &self.cache {
+                    cache.set(&url, &body);
+                }
+            }
+        }
+
+        Ok(serde_json::from_str(&body)?)
     }
 
     pub async fn post<B: Serialize, T: DeserializeOwned>(
@@ -188,6 +208,11 @@ impl HtbClient {
         &self,
         resp: reqwest::Response,
     ) -> Result<T, HtbError> {
+        let body = self.handle_response_raw(resp).await?;
+        Ok(serde_json::from_str(&body)?)
+    }
+
+    async fn handle_response_raw(&self, resp: reqwest::Response) -> Result<String, HtbError> {
         self.rate_limit.update(resp.headers());
         self.log_rate_limit();
 
@@ -213,9 +238,7 @@ impl HtbClient {
             });
         }
 
-        let body = resp.text().await?;
-        let parsed = serde_json::from_str(&body)?;
-        Ok(parsed)
+        Ok(resp.text().await?)
     }
 
     async fn wait_for_rate_limit(&self) {
@@ -262,6 +285,33 @@ impl HtbClient {
 
     pub fn search(&self) -> search::SearchApi<'_> {
         search::SearchApi(self)
+    }
+
+    fn ttl_for_path(&self, path: &str) -> Option<Duration> {
+        // Reference data (30 min)
+        if path.contains("/categories/list")
+            || path.contains("/season/list")
+            || path.contains("/tags/list")
+        {
+            return Some(Duration::from_secs(1800));
+        }
+        // Lists (5 min)
+        if path.starts_with("/api/v5/machines")
+            || path.starts_with("/api/v4/challenges")
+            || path.starts_with("/api/v4/sherlocks/list")
+        {
+            return Some(Duration::from_secs(300));
+        }
+        // Profiles (2 min)
+        if path.contains("/machine/profile/")
+            || path.contains("/challenge/info/")
+            || path.contains("/sherlocks/")
+            || path.contains("/user/info")
+            || path.contains("/user/profile/")
+        {
+            return Some(Duration::from_secs(120));
+        }
+        None
     }
 }
 

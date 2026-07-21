@@ -77,61 +77,65 @@ async fn main() {
     let cache_dir = config::config_dir()
         .map(|d| d.join("cache"))
         .unwrap_or_else(|_| std::env::temp_dir().join("htb-cli-cache"));
-    let app_cache = cache::Cache::new(cache_dir, cache_enabled);
+    let app_cache = std::sync::Arc::new(cache::Cache::new(cache_dir, cache_enabled));
 
-    if let Err(e) = run(cli.command, format, &app_cache).await {
+    if let Err(e) = run(cli.command, format, app_cache).await {
         eprintln!("Error: {e}");
         std::process::exit(1);
     }
 }
 
-async fn run(command: Command, format: OutputFormat, cache: &cache::Cache) -> anyhow::Result<()> {
+async fn run(
+    command: Command,
+    format: OutputFormat,
+    app_cache: std::sync::Arc<cache::Cache>,
+) -> anyhow::Result<()> {
     match command {
         Command::Auth { command } => cli::auth::handle(command, format).await,
 
         Command::Machines { command } => {
-            let client = authenticated_client()?;
+            let client = authenticated_client(app_cache)?;
             cli::machines::handle(&client, command, format).await
         }
 
         Command::Challenges { command } => {
-            let client = authenticated_client()?;
+            let client = authenticated_client(app_cache)?;
             cli::challenges::handle(&client, command, format).await
         }
 
         Command::Seasons { command } => {
-            let client = authenticated_client()?;
+            let client = authenticated_client(app_cache)?;
             cli::seasons::handle(&client, command, format).await
         }
 
         Command::Sherlocks { command } => {
-            let client = authenticated_client()?;
+            let client = authenticated_client(app_cache)?;
             cli::sherlocks::handle(&client, command, format).await
         }
 
         Command::Vpn { command } => {
-            let client = authenticated_client()?;
+            let client = authenticated_client(app_cache)?;
             cli::vpn::handle(&client, command, format).await
         }
 
         Command::User { command } => {
-            let client = authenticated_client()?;
+            let client = authenticated_client(app_cache)?;
             cli::user::handle(&client, command, format).await
         }
 
         Command::Search { query } => {
-            let client = authenticated_client()?;
+            let client = authenticated_client(app_cache)?;
             cli::search::handle(&client, &query).await
         }
 
         Command::Cache { command } => {
-            cli::cache::handle(command, cache);
+            cli::cache::handle(command, &app_cache);
             Ok(())
         }
     }
 }
 
-fn authenticated_client() -> anyhow::Result<api::HtbClient> {
+fn authenticated_client(cache: std::sync::Arc<cache::Cache>) -> anyhow::Result<api::HtbClient> {
     let token = config::read_token()?;
-    Ok(api::HtbClient::new(token))
+    Ok(api::HtbClient::with_cache_arc(token, cache))
 }
