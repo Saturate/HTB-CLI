@@ -73,6 +73,12 @@ pub fn config_dir() -> Result<PathBuf, crate::error::HtbError> {
         .map(|d| d.join(".htb-cli"))
 }
 
+pub fn cache_dir() -> PathBuf {
+    config_dir()
+        .map(|d| d.join("cache"))
+        .unwrap_or_else(|_| std::env::temp_dir().join("htb-cli-cache"))
+}
+
 pub fn token_path() -> Result<PathBuf, crate::error::HtbError> {
     Ok(config_dir()?.join(".token"))
 }

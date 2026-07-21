@@ -79,7 +79,7 @@ impl Cache {
             return;
         };
 
-        let tmp = path.with_extension("tmp");
+        let tmp = path.with_extension(format!("{}.tmp", std::process::id()));
         if write_atomic(&tmp, &path, data.as_bytes()).is_err() {
             tracing::debug!("cache write failed: {}", path.display());
         }
@@ -114,7 +114,8 @@ impl Cache {
         };
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().and_then(|e| e.to_str()) == Some("json") {
+            let ext = path.extension().and_then(|e| e.to_str());
+            if ext == Some("json") || ext == Some("tmp") {
                 let _ = fs::remove_file(path);
             }
         }
@@ -178,7 +179,7 @@ fn now_secs() -> u64 {
         .as_secs()
 }
 
-fn write_atomic(tmp: &PathBuf, dest: &PathBuf, data: &[u8]) -> std::io::Result<()> {
+fn write_atomic(tmp: &std::path::Path, dest: &std::path::Path, data: &[u8]) -> std::io::Result<()> {
     #[cfg(unix)]
     {
         use std::io::Write;
@@ -202,8 +203,9 @@ fn write_atomic(tmp: &PathBuf, dest: &PathBuf, data: &[u8]) -> std::io::Result<(
 mod tests {
     use super::*;
 
-    fn temp_cache() -> (Cache, PathBuf) {
-        let dir = std::env::temp_dir().join(format!("htb-cache-test-{}", std::process::id()));
+    fn temp_cache(name: &str) -> (Cache, PathBuf) {
+        let dir =
+            std::env::temp_dir().join(format!("htb-cache-test-{name}-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         let cache = Cache::new(dir.clone(), true);
         (cache, dir)
@@ -211,7 +213,7 @@ mod tests {
 
     #[test]
     fn cache_hit_and_miss() {
-        let (cache, _dir) = temp_cache();
+        let (cache, _dir) = temp_cache("hit-miss");
         let url = "https://labs.hackthebox.com/api/v4/machine/profile/Test";
 
         assert!(cache.get(url, Duration::from_secs(120)).is_none());
@@ -224,7 +226,7 @@ mod tests {
 
     #[test]
     fn cache_expiry() {
-        let (cache, _dir) = temp_cache();
+        let (cache, _dir) = temp_cache("expiry");
         let url = "https://labs.hackthebox.com/api/v4/machine/profile/Old";
 
         // Write an entry with a timestamp in the past
@@ -240,7 +242,7 @@ mod tests {
 
     #[test]
     fn cache_future_timestamp_treated_as_expired() {
-        let (cache, _dir) = temp_cache();
+        let (cache, _dir) = temp_cache("future-ts");
         let url = "https://labs.hackthebox.com/api/v4/test";
 
         let path = cache.path_for(url);
@@ -256,7 +258,7 @@ mod tests {
 
     #[test]
     fn corrupt_file_treated_as_miss() {
-        let (cache, _dir) = temp_cache();
+        let (cache, _dir) = temp_cache("corrupt");
         let url = "https://labs.hackthebox.com/api/v4/corrupt";
 
         let path = cache.path_for(url);
@@ -268,7 +270,7 @@ mod tests {
 
     #[test]
     fn invalidate_pattern() {
-        let (cache, _dir) = temp_cache();
+        let (cache, _dir) = temp_cache("invalidate");
         let url1 = "https://labs.hackthebox.com/api/v4/machine/profile/A";
         let url2 = "https://labs.hackthebox.com/api/v4/machine/profile/B";
         let url3 = "https://labs.hackthebox.com/api/v4/challenge/info/C";
@@ -286,7 +288,7 @@ mod tests {
 
     #[test]
     fn clear_removes_all() {
-        let (cache, _dir) = temp_cache();
+        let (cache, _dir) = temp_cache("clear");
         cache.set("https://example.com/api/v4/a", "1");
         cache.set("https://example.com/api/v4/b", "2");
 

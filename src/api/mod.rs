@@ -86,10 +86,6 @@ impl HtbClient {
         Self::build(token, BASE_URL.to_string(), None)
     }
 
-    pub fn with_cache(token: String, cache: Cache) -> Self {
-        Self::build(token, BASE_URL.to_string(), Some(Arc::new(cache)))
-    }
-
     pub fn with_cache_arc(token: String, cache: Arc<Cache>) -> Self {
         Self::build(token, BASE_URL.to_string(), Some(cache))
     }
@@ -97,6 +93,10 @@ impl HtbClient {
     #[cfg(test)]
     pub fn with_base_url(token: String, base_url: String) -> Self {
         Self::build(token, base_url, None)
+    }
+
+    pub fn with_base_url_and_cache(token: String, base_url: String, cache: Arc<Cache>) -> Self {
+        Self::build(token, base_url, Some(cache))
     }
 
     fn build(token: String, base_url: String, cache: Option<Arc<Cache>>) -> Self {
@@ -117,11 +117,19 @@ impl HtbClient {
 
     pub async fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T, HtbError> {
         let url = format!("{}{}", self.base_url, path);
+        let ttl = self.ttl_for_path(path);
 
-        if let Some(max_age) = self.ttl_for_path(path) {
+        if let Some(max_age) = ttl {
             if let Some(cache) = &self.cache {
                 if let Some(body) = cache.get(&url, max_age) {
-                    return Ok(serde_json::from_str(&body)?);
+                    match serde_json::from_str(&body) {
+                        Ok(parsed) => return Ok(parsed),
+                        Err(e) => {
+                            tracing::debug!(
+                                "cached response failed to deserialize, refetching: {e}"
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -131,7 +139,7 @@ impl HtbClient {
         let resp = self.http.get(&url).bearer_auth(&self.token).send().await?;
         let body = self.handle_response_raw(resp).await?;
 
-        if let Some(max_age) = self.ttl_for_path(path) {
+        if let Some(max_age) = ttl {
             if max_age > Duration::ZERO {
                 if let Some(cache) = &self.cache {
                     cache.set(&url, &body);
@@ -181,6 +189,9 @@ impl HtbClient {
             || path.contains("/challenge/own")
         {
             cache.invalidate_pattern("api_v4_challenge");
+        }
+        if path.contains("/sherlocks/") && path.contains("/flag") {
+            cache.invalidate_pattern("api_v4_sherlock");
         }
     }
 
@@ -309,6 +320,9 @@ impl HtbClient {
     }
 
     fn ttl_for_path(&self, path: &str) -> Option<Duration> {
+        if path.contains("/download_link") {
+            return None;
+        }
         // Reference data (30 min)
         if path.contains("/categories/list")
             || path.contains("/season/list")
@@ -318,8 +332,8 @@ impl HtbClient {
         }
         // Lists (5 min)
         if path.starts_with("/api/v5/machines")
-            || path.starts_with("/api/v4/challenges")
-            || path.starts_with("/api/v4/sherlocks/list")
+            || path.starts_with("/api/v4/challenges?")
+            || path.starts_with("/api/v4/sherlocks?")
         {
             return Some(Duration::from_secs(300));
         }

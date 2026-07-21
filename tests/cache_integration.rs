@@ -1,182 +1,118 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::sync::Arc;
+
+use htb_cli::cache::Cache;
 
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-fn temp_cache_dir(name: &str) -> PathBuf {
+fn temp_cache(name: &str) -> Cache {
     let dir = std::env::temp_dir().join(format!("htb-cache-integ-{name}-{}", std::process::id()));
-    let _ = fs::remove_dir_all(&dir);
-    fs::create_dir_all(&dir).unwrap();
-    dir
-}
-
-fn sanitize_url(url: &str) -> String {
-    let path = url
-        .strip_prefix("https://")
-        .or_else(|| url.strip_prefix("http://"))
-        .unwrap_or(url);
-    let path = match path.find('/') {
-        Some(i) => &path[i + 1..],
-        None => path,
-    };
-    path.chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || c == '_' || c == '-' || c == '.' {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect()
-}
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct CacheEntry {
-    cached_at: u64,
-    body: String,
-}
-
-fn cache_get(dir: &Path, url: &str, max_age: Duration) -> Option<String> {
-    let filename = format!("{}.json", sanitize_url(url));
-    let path = dir.join(filename);
-    let data = fs::read_to_string(&path).ok()?;
-    let entry: CacheEntry = serde_json::from_str(&data).ok()?;
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-    if now - entry.cached_at > max_age.as_secs() {
-        return None;
-    }
-    Some(entry.body)
-}
-
-fn cache_set(dir: &Path, url: &str, body: &str) {
-    let filename = format!("{}.json", sanitize_url(url));
-    let path = dir.join(filename);
-    let entry = CacheEntry {
-        cached_at: std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs(),
-        body: body.to_string(),
-    };
-    fs::write(path, serde_json::to_string(&entry).unwrap()).unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    Cache::new(dir, true)
 }
 
 #[tokio::test]
-async fn cache_prevents_duplicate_http_requests() {
+async fn cached_get_hits_server_once() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/api/v4/machine/profile/TestBox"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(serde_json::json!({"info": {
-                "id": 1, "name": "TestBox", "os": "Linux"
-            }})),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "info": {"id": 1, "name": "TestBox", "os": "Linux",
+                     "points": 30, "userOwnsCount": 0, "rootOwnsCount": 0}
+        })))
         .expect(1)
         .mount(&server)
         .await;
 
-    let cache_dir = temp_cache_dir("dup-requests");
-    let url = format!("{}/api/v4/machine/profile/TestBox", server.uri());
-    let max_age = Duration::from_secs(120);
+    let cache = Arc::new(temp_cache("hit-once"));
+    let client =
+        htb_cli::api::HtbClient::with_base_url_and_cache("test-token".into(), server.uri(), cache);
 
-    // First request: cache miss, hits the server
-    assert!(cache_get(&cache_dir, &url, max_age).is_none());
-    let resp = reqwest::get(&url).await.unwrap();
-    let body = resp.text().await.unwrap();
-    cache_set(&cache_dir, &url, &body);
+    let result: serde_json::Value = client.get("/api/v4/machine/profile/TestBox").await.unwrap();
+    assert_eq!(result["info"]["name"], "TestBox");
 
-    // Second request: cache hit, does NOT hit the server
-    let cached = cache_get(&cache_dir, &url, max_age);
-    assert!(cached.is_some());
-    let parsed: serde_json::Value = serde_json::from_str(&cached.unwrap()).unwrap();
-    assert_eq!(parsed["info"]["name"], "TestBox");
-
-    // Wiremock will panic at drop if the mock was called more than once (expect(1))
+    let cached: serde_json::Value = client.get("/api/v4/machine/profile/TestBox").await.unwrap();
+    assert_eq!(cached["info"]["name"], "TestBox");
 }
 
 #[tokio::test]
-async fn invalidation_forces_fresh_fetch() {
+async fn invalidation_after_post_clears_machine_cache() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/api/v4/machine/profile/Box"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_json(serde_json::json!({"info": {"id": 1}})),
-        )
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "info": {"id": 927, "name": "Box", "os": "Linux",
+                     "points": 30, "userOwnsCount": 0, "rootOwnsCount": 0}
+        })))
         .expect(2)
         .mount(&server)
         .await;
 
-    let cache_dir = temp_cache_dir("invalidation");
-    let url = format!("{}/api/v4/machine/profile/Box", server.uri());
-    let max_age = Duration::from_secs(120);
-
-    // First request
-    let resp = reqwest::get(&url).await.unwrap();
-    cache_set(&cache_dir, &url, &resp.text().await.unwrap());
-    assert!(cache_get(&cache_dir, &url, max_age).is_some());
-
-    // Invalidate machine cache (simulate post-mutation)
-    for entry in fs::read_dir(&cache_dir).unwrap().flatten() {
-        let name = entry.file_name();
-        let name = name.to_string_lossy();
-        if name.starts_with("api_v4_machine") && name.ends_with(".json") {
-            fs::remove_file(entry.path()).unwrap();
-        }
-    }
-
-    // Cache miss after invalidation
-    assert!(cache_get(&cache_dir, &url, max_age).is_none());
-
-    // Second request hits server again
-    let resp = reqwest::get(&url).await.unwrap();
-    cache_set(&cache_dir, &url, &resp.text().await.unwrap());
-
-    // Wiremock verifies exactly 2 calls
-}
-
-#[tokio::test]
-async fn expired_cache_entry_causes_refetch() {
-    let server = MockServer::start().await;
-    Mock::given(method("GET"))
-        .and(path("/api/v4/user/info"))
+    Mock::given(method("POST"))
+        .and(path("/api/v4/vm/spawn"))
         .respond_with(
             ResponseTemplate::new(200)
-                .set_body_json(serde_json::json!({"info": {"id": 1, "name": "User"}})),
+                .set_body_json(serde_json::json!({"message": "Spawned", "success": true})),
         )
-        .expect(1)
         .mount(&server)
         .await;
 
-    let cache_dir = temp_cache_dir("expiry");
-    let url = format!("{}/api/v4/user/info", server.uri());
+    let cache = Arc::new(temp_cache("invalidation"));
+    let client =
+        htb_cli::api::HtbClient::with_base_url_and_cache("test-token".into(), server.uri(), cache);
 
-    // Write a stale entry (5 minutes old, 2 min TTL)
-    let filename = format!("{}.json", sanitize_url(&url));
-    let stale = CacheEntry {
-        cached_at: std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
-            - 300,
-        body: r#"{"info":{"id":0,"name":"Stale"}}"#.to_string(),
-    };
-    fs::write(
-        cache_dir.join(filename),
-        serde_json::to_string(&stale).unwrap(),
-    )
-    .unwrap();
+    let _: serde_json::Value = client.get("/api/v4/machine/profile/Box").await.unwrap();
 
-    // Should be expired
-    assert!(cache_get(&cache_dir, &url, Duration::from_secs(120)).is_none());
+    let _: serde_json::Value = client
+        .post("/api/v4/vm/spawn", &serde_json::json!({"machine_id": 927}))
+        .await
+        .unwrap();
 
-    // Fetch fresh data
-    let resp = reqwest::get(&url).await.unwrap();
-    let body = resp.text().await.unwrap();
-    let parsed: serde_json::Value = serde_json::from_str(&body).unwrap();
-    assert_eq!(parsed["info"]["name"], "User");
+    let _: serde_json::Value = client.get("/api/v4/machine/profile/Box").await.unwrap();
+}
+
+#[tokio::test]
+async fn uncached_endpoints_always_hit_server() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v5/virtual_machine/active"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"info": null})))
+        .expect(2)
+        .mount(&server)
+        .await;
+
+    let cache = Arc::new(temp_cache("uncached"));
+    let client =
+        htb_cli::api::HtbClient::with_base_url_and_cache("test-token".into(), server.uri(), cache);
+
+    let _: serde_json::Value = client.get("/api/v5/virtual_machine/active").await.unwrap();
+    let _: serde_json::Value = client.get("/api/v5/virtual_machine/active").await.unwrap();
+}
+
+#[tokio::test]
+async fn disabled_cache_always_hits_server() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v4/machine/profile/NoCacheBox"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "info": {"id": 1, "name": "NoCacheBox", "os": "Linux",
+                     "points": 30, "userOwnsCount": 0, "rootOwnsCount": 0}
+        })))
+        .expect(2)
+        .mount(&server)
+        .await;
+
+    let dir = std::env::temp_dir().join(format!("htb-cache-integ-disabled-{}", std::process::id()));
+    let cache = Arc::new(Cache::new(dir, false));
+    let client =
+        htb_cli::api::HtbClient::with_base_url_and_cache("test-token".into(), server.uri(), cache);
+
+    let _: serde_json::Value = client
+        .get("/api/v4/machine/profile/NoCacheBox")
+        .await
+        .unwrap();
+    let _: serde_json::Value = client
+        .get("/api/v4/machine/profile/NoCacheBox")
+        .await
+        .unwrap();
 }

@@ -1,6 +1,9 @@
+use std::sync::Arc;
+
 use clap::Subcommand;
 
 use crate::api::HtbClient;
+use crate::cache::Cache;
 use crate::output::OutputFormat;
 
 #[derive(Subcommand)]
@@ -13,15 +16,19 @@ pub enum AuthCommand {
     Logout,
 }
 
-pub async fn handle(cmd: AuthCommand, format: OutputFormat) -> anyhow::Result<()> {
+pub async fn handle(
+    cmd: AuthCommand,
+    format: OutputFormat,
+    cache: &Arc<Cache>,
+) -> anyhow::Result<()> {
     match cmd {
-        AuthCommand::Login => login().await,
+        AuthCommand::Login => login(cache).await,
         AuthCommand::Status => status(format).await,
-        AuthCommand::Logout => logout(),
+        AuthCommand::Logout => logout(cache),
     }
 }
 
-async fn login() -> anyhow::Result<()> {
+async fn login(cache: &Cache) -> anyhow::Result<()> {
     println!("Enter your HTB API token (from https://app.hackthebox.com/profile/settings):");
     let token = rpassword::read_password()?;
     let token = token.trim().to_string();
@@ -34,7 +41,7 @@ async fn login() -> anyhow::Result<()> {
     let user = client.user().current().await?;
 
     crate::config::save_token(&token)?;
-    clear_cache();
+    cache.clear();
     println!(
         "Authenticated as {} ({})",
         user.name,
@@ -65,16 +72,9 @@ async fn status(format: OutputFormat) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn logout() -> anyhow::Result<()> {
+fn logout(cache: &Cache) -> anyhow::Result<()> {
     crate::config::remove_token()?;
-    clear_cache();
+    cache.clear();
     println!("Token removed.");
     Ok(())
-}
-
-fn clear_cache() {
-    if let Ok(dir) = crate::config::config_dir() {
-        let cache = crate::cache::Cache::new(dir.join("cache"), true);
-        cache.clear();
-    }
 }

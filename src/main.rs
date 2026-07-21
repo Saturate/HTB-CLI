@@ -1,26 +1,11 @@
-pub mod api;
-pub mod cache;
-pub mod cli;
-pub mod config;
-pub mod error;
-pub mod mcp;
-pub mod models;
-pub mod output;
-
-use std::path::Path;
-
 use clap::Parser;
 use tracing_subscriber::EnvFilter;
 
-pub fn sanitize_filename(raw: &str, fallback: &str) -> String {
-    Path::new(raw)
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| fallback.to_string())
-}
-
-use cli::{Cli, Command};
-use output::OutputFormat;
+use htb_cli::cache;
+use htb_cli::cli::{self, Cli, Command};
+use htb_cli::config;
+use htb_cli::mcp;
+use htb_cli::output::OutputFormat;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -74,10 +59,7 @@ async fn main() {
     }
 
     let cache_enabled = cfg.cache.enabled && !cli.no_cache;
-    let cache_dir = config::config_dir()
-        .map(|d| d.join("cache"))
-        .unwrap_or_else(|_| std::env::temp_dir().join("htb-cli-cache"));
-    let app_cache = std::sync::Arc::new(cache::Cache::new(cache_dir, cache_enabled));
+    let app_cache = std::sync::Arc::new(cache::Cache::new(config::cache_dir(), cache_enabled));
 
     if let Err(e) = run(cli.command, format, app_cache).await {
         eprintln!("Error: {e}");
@@ -91,7 +73,7 @@ async fn run(
     app_cache: std::sync::Arc<cache::Cache>,
 ) -> anyhow::Result<()> {
     match command {
-        Command::Auth { command } => cli::auth::handle(command, format).await,
+        Command::Auth { command } => cli::auth::handle(command, format, &app_cache).await,
 
         Command::Machines { command } => {
             let client = authenticated_client(app_cache)?;
@@ -135,7 +117,9 @@ async fn run(
     }
 }
 
-fn authenticated_client(cache: std::sync::Arc<cache::Cache>) -> anyhow::Result<api::HtbClient> {
+fn authenticated_client(
+    cache: std::sync::Arc<cache::Cache>,
+) -> anyhow::Result<htb_cli::api::HtbClient> {
     let token = config::read_token()?;
-    Ok(api::HtbClient::with_cache_arc(token, cache))
+    Ok(htb_cli::api::HtbClient::with_cache_arc(token, cache))
 }
