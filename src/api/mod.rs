@@ -160,7 +160,28 @@ impl HtbClient {
             .send()
             .await?;
 
-        self.handle_response(resp).await
+        let result = self.handle_response(resp).await?;
+        self.invalidate_after_post(path);
+        Ok(result)
+    }
+
+    fn invalidate_after_post(&self, path: &str) {
+        let Some(cache) = &self.cache else { return };
+        if path.contains("/vm/spawn")
+            || path.contains("/vm/terminate")
+            || path.contains("/vm/reset")
+            || path.contains("/machine/own")
+            || path.contains("/machine/todo")
+        {
+            cache.invalidate_pattern("api_v4_machine");
+            cache.invalidate_pattern("api_v5_machine");
+        }
+        if path.contains("/container/start")
+            || path.contains("/container/stop")
+            || path.contains("/challenge/own")
+        {
+            cache.invalidate_pattern("api_v4_challenge");
+        }
     }
 
     pub async fn get_bytes(&self, url_or_path: &str) -> Result<Vec<u8>, HtbError> {
