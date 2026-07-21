@@ -46,11 +46,22 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Run knope release
+      - name: Prepare release with knope
         if: steps.knope.outputs.should_release == 'true'
         run: knope release
+
+      - name: Commit, tag, push, and create release
+        if: steps.knope.outputs.should_release == 'true'
+        run: |
+          git add -A
+          git commit -m "chore: prepare release v${{ steps.knope.outputs.version }}"
+          git tag "v${{ steps.knope.outputs.version }}"
+          git push origin main --tags
+          gh release create "v${{ steps.knope.outputs.version }}" \
+            --title "v${{ steps.knope.outputs.version }}" \
+            --notes-file CHANGELOG.md
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
   build:
     needs: prepare
