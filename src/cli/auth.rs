@@ -34,6 +34,7 @@ async fn login() -> anyhow::Result<()> {
     let user = client.user().current().await?;
 
     crate::config::save_token(&token)?;
+    clear_cache();
     println!(
         "Authenticated as {} ({})",
         user.name,
@@ -66,6 +67,14 @@ async fn status(format: OutputFormat) -> anyhow::Result<()> {
 
 fn logout() -> anyhow::Result<()> {
     crate::config::remove_token()?;
+    clear_cache();
     println!("Token removed.");
     Ok(())
+}
+
+fn clear_cache() {
+    if let Ok(dir) = crate::config::config_dir() {
+        let cache = crate::cache::Cache::new(dir.join("cache"), true);
+        cache.clear();
+    }
 }
