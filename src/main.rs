@@ -68,7 +68,8 @@ async fn main() {
     };
 
     if cli.no_color || cfg.no_color {
-        std::env::set_var("NO_COLOR", "1");
+        // SAFETY: called before any concurrent work; single-threaded tokio runtime
+        unsafe { std::env::set_var("NO_COLOR", "1") };
     }
 
     if let Err(e) = run(cli.command, format).await {

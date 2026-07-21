@@ -31,9 +31,10 @@ impl Default for HtbConfig {
 
 impl HtbConfig {
     pub fn load(path: Option<&Path>) -> anyhow::Result<Self> {
-        let config_path = path
-            .map(|p| p.to_path_buf())
-            .unwrap_or_else(|| config_dir().join("config.toml"));
+        let config_path = match path {
+            Some(p) => p.to_path_buf(),
+            None => config_dir()?.join("config.toml"),
+        };
 
         if config_path.exists() {
             let contents = fs::read_to_string(&config_path)?;
@@ -44,18 +45,18 @@ impl HtbConfig {
     }
 }
 
-pub fn config_dir() -> PathBuf {
+pub fn config_dir() -> Result<PathBuf, crate::error::HtbError> {
     dirs::home_dir()
-        .expect("could not determine home directory")
-        .join(".htb-cli")
+        .ok_or_else(|| crate::error::HtbError::Config("could not determine home directory".into()))
+        .map(|d| d.join(".htb-cli"))
 }
 
-pub fn token_path() -> PathBuf {
-    config_dir().join(".token")
+pub fn token_path() -> Result<PathBuf, crate::error::HtbError> {
+    Ok(config_dir()?.join(".token"))
 }
 
 pub fn read_token() -> Result<String, crate::error::HtbError> {
-    let path = token_path();
+    let path = token_path()?;
     if !path.exists() {
         return Err(crate::error::HtbError::NotAuthenticated);
     }
@@ -67,10 +68,10 @@ pub fn read_token() -> Result<String, crate::error::HtbError> {
 }
 
 pub fn save_token(token: &str) -> anyhow::Result<()> {
-    let dir = config_dir();
+    let dir = config_dir()?;
     fs::create_dir_all(&dir)?;
 
-    let path = token_path();
+    let path = token_path()?;
 
     #[cfg(unix)]
     {
@@ -94,7 +95,7 @@ pub fn save_token(token: &str) -> anyhow::Result<()> {
 }
 
 pub fn remove_token() -> anyhow::Result<()> {
-    let path = token_path();
+    let path = token_path()?;
     if path.exists() {
         fs::remove_file(&path)?;
     }
