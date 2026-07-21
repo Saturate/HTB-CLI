@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use super::{deserialize_bool_or_null, deserialize_string_or_int};
 use crate::output::Tabular;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -41,7 +42,7 @@ pub struct ChallengeDetail {
     pub name: String,
     #[serde(default)]
     pub difficulty: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_string_or_int")]
     pub points: Option<String>,
     #[serde(default)]
     pub state: Option<String>,
@@ -59,7 +60,7 @@ pub struct ChallengeDetail {
     pub first_blood_time: Option<String>,
     #[serde(default)]
     pub creator_name: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_bool_or_null")]
     pub download: bool,
     #[serde(default)]
     pub file_name: Option<String>,
@@ -71,7 +72,11 @@ pub struct ChallengeDetail {
     pub play_methods: Vec<String>,
     #[serde(default)]
     pub release_date: Option<String>,
-    #[serde(default, rename = "authUserSolve")]
+    #[serde(
+        default,
+        rename = "authUserSolve",
+        deserialize_with = "deserialize_bool_or_null"
+    )]
     pub auth_user_solve: bool,
     #[serde(default)]
     pub experience_points: Option<u32>,
@@ -181,6 +186,14 @@ mod tests {
         assert_eq!(result.challenge.name, "Poly");
         assert_eq!(result.challenge.difficulty.as_deref(), Some("Insane"));
         assert_eq!(result.challenge.category_name.as_deref(), Some("Reversing"));
+    }
+
+    #[test]
+    fn deserialize_challenge_detail_int_points() {
+        let json = include_str!("../../tests/fixtures/challenge-info-int-points.json");
+        let result: ChallengeDetailResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(result.challenge.name, "TestIntPoints");
+        assert_eq!(result.challenge.points.as_deref(), Some("0"));
     }
 
     #[test]

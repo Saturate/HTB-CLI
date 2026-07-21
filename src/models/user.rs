@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::deserialize_bool_or_null;
+
 #[derive(Debug, Deserialize)]
 pub struct UserInfoResponse {
     pub info: UserInfo,
@@ -14,16 +16,17 @@ pub struct UserInfo {
     pub email: Option<String>,
     #[serde(default)]
     pub timezone: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_bool_or_null")]
     pub is_vip: bool,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_bool_or_null")]
     pub is_moderator: bool,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_bool_or_null")]
     pub can_access_vip: bool,
     #[serde(default)]
     pub server_id: Option<u32>,
     #[serde(default)]
     pub rank_id: u32,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_bool_or_null")]
     pub verified: bool,
     #[serde(default)]
     pub subscription_type: Option<String>,
@@ -62,9 +65,17 @@ pub struct UserProfile {
     pub joined_date: Option<String>,
     #[serde(default)]
     pub server: Option<String>,
-    #[serde(default, rename = "isVip")]
+    #[serde(
+        default,
+        rename = "isVip",
+        deserialize_with = "deserialize_bool_or_null"
+    )]
     pub is_vip: bool,
-    #[serde(default, rename = "isDedicatedVip")]
+    #[serde(
+        default,
+        rename = "isDedicatedVip",
+        deserialize_with = "deserialize_bool_or_null"
+    )]
     pub is_dedicated_vip: bool,
 }
 
