@@ -57,9 +57,11 @@ jobs:
           git commit -m "chore: prepare release v${{ steps.knope.outputs.version }}"
           git tag "v${{ steps.knope.outputs.version }}"
           git push origin main --tags
+          # Extract only this version's changelog section
+          sed -n '/^## ${{ steps.knope.outputs.version }}/,/^## [0-9]/p' CHANGELOG.md | sed '$d' > /tmp/release-notes.md
           gh release create "v${{ steps.knope.outputs.version }}" \
             --title "v${{ steps.knope.outputs.version }}" \
-            --notes-file CHANGELOG.md
+            --notes-file /tmp/release-notes.md
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
