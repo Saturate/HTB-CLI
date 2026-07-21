@@ -223,13 +223,26 @@ pub async fn handle(
             }
             Some(TodoCommand::Add { name_or_id }) => {
                 let machine = client.machines().profile(&name_or_id).await?;
-                let resp = client.machines().todo_toggle(machine.id).await?;
-                output::print_message(&resp.message);
+                let todos = client.machines().todo_list().await?;
+                if todos.iter().any(|m| m.id == machine.id) {
+                    output::print_message(&format!(
+                        "{} is already in your todo list.",
+                        machine.name
+                    ));
+                } else {
+                    let resp = client.machines().todo_toggle(machine.id).await?;
+                    output::print_message(&resp.message);
+                }
             }
             Some(TodoCommand::Remove { name_or_id }) => {
                 let machine = client.machines().profile(&name_or_id).await?;
-                let resp = client.machines().todo_toggle(machine.id).await?;
-                output::print_message(&resp.message);
+                let todos = client.machines().todo_list().await?;
+                if todos.iter().any(|m| m.id == machine.id) {
+                    let resp = client.machines().todo_toggle(machine.id).await?;
+                    output::print_message(&resp.message);
+                } else {
+                    output::print_message(&format!("{} is not in your todo list.", machine.name));
+                }
             }
         },
     }
