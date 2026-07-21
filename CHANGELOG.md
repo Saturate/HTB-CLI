@@ -1,4 +1,11 @@
 # Changelog
+## 0.1.3 (2026-07-21)
+
+### Fixes
+
+- handle release creation in workflow instead of knope
+- correct canAccessVIP field rename on UserInfo (#8)
+
 ## 0.1.2 (2026-07-21)
 
 ### Fixes
