@@ -29,4 +29,8 @@ type = "Command"
 command = "git commit -m 'chore: prepare release'"
 
 [[workflows.steps]]
+type = "Command"
+command = "git push origin main"
+
+[[workflows.steps]]
 type = "Release"
