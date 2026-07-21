@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 pub mod challenge;
 pub mod machine;
@@ -6,6 +6,27 @@ pub mod season;
 pub mod sherlock;
 pub mod user;
 pub mod vpn;
+
+/// Deserialize a value that may be a string or an integer into `Option<String>`.
+pub(crate) fn deserialize_string_or_int<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let v = Option::<serde_json::Value>::deserialize(deserializer)?;
+    Ok(v.map(|v| match v {
+        serde_json::Value::String(s) => s,
+        serde_json::Value::Number(n) => n.to_string(),
+        other => other.to_string(),
+    }))
+}
+
+/// Deserialize a bool that may arrive as `null` from the API.
+pub(crate) fn deserialize_bool_or_null<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(Option::<bool>::deserialize(deserializer)?.unwrap_or(false))
+}
 
 #[derive(Debug, Deserialize)]
 pub struct Paginated<T> {
@@ -78,5 +99,35 @@ mod tests {
         let json = include_str!("../../tests/fixtures/challenge-own-incorrect.json");
         let result: ActionResponse = serde_json::from_str(json).unwrap();
         assert_eq!(result.message, "Incorrect flag");
+    }
+
+    #[test]
+    fn bool_or_null_handles_null() {
+        #[derive(Deserialize)]
+        struct T {
+            #[serde(default, deserialize_with = "deserialize_bool_or_null")]
+            flag: bool,
+        }
+        let null: T = serde_json::from_str(r#"{"flag": null}"#).unwrap();
+        assert!(!null.flag);
+        let t: T = serde_json::from_str(r#"{"flag": true}"#).unwrap();
+        assert!(t.flag);
+        let missing: T = serde_json::from_str(r#"{}"#).unwrap();
+        assert!(!missing.flag);
+    }
+
+    #[test]
+    fn string_or_int_handles_both() {
+        #[derive(Deserialize)]
+        struct T {
+            #[serde(default, deserialize_with = "deserialize_string_or_int")]
+            val: Option<String>,
+        }
+        let s: T = serde_json::from_str(r#"{"val": "50"}"#).unwrap();
+        assert_eq!(s.val.as_deref(), Some("50"));
+        let i: T = serde_json::from_str(r#"{"val": 0}"#).unwrap();
+        assert_eq!(i.val.as_deref(), Some("0"));
+        let n: T = serde_json::from_str(r#"{"val": null}"#).unwrap();
+        assert!(n.val.is_none());
     }
 }

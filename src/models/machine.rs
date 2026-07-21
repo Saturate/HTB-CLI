@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use super::deserialize_bool_or_null;
 use crate::output::Tabular;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -24,13 +25,13 @@ pub struct Machine {
     pub auth_user_in_user_owns: Option<bool>,
     #[serde(default)]
     pub auth_user_in_root_owns: Option<bool>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_bool_or_null")]
     pub todo: bool,
     #[serde(default)]
     pub state: Option<String>,
     #[serde(default)]
     pub ip: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_bool_or_null")]
     pub free: bool,
     #[serde(default)]
     pub release_date: Option<String>,
@@ -49,7 +50,7 @@ pub struct MachinePlayInfo {
     pub is_spawned: Option<bool>,
     #[serde(default)]
     pub is_spawning: Option<bool>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_bool_or_null")]
     pub is_active: bool,
     #[serde(default)]
     pub active_player_count: Option<u32>,
