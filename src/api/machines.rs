@@ -28,12 +28,14 @@ impl MachineApi<'_> {
 
     pub async fn start(&self, machine_id: u64) -> Result<ActionResponse, HtbError> {
         self.0
-            .post(&format!("/api/v4/machine/play/{machine_id}"), &json!({}))
+            .post("/api/v4/vm/spawn", &json!({"machine_id": machine_id}))
             .await
     }
 
-    pub async fn stop(&self) -> Result<ActionResponse, HtbError> {
-        self.0.post("/api/v4/machine/stop", &json!({})).await
+    pub async fn stop(&self, machine_id: u64) -> Result<ActionResponse, HtbError> {
+        self.0
+            .post("/api/v4/vm/terminate", &json!({"machine_id": machine_id}))
+            .await
     }
 
     pub async fn reset(&self, machine_id: u64) -> Result<ActionResponse, HtbError> {
