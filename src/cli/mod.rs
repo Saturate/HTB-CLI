@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod cache;
 pub mod challenges;
 pub mod machines;
 pub mod search;
@@ -34,6 +35,9 @@ pub struct Cli {
 
     #[arg(long, global = true, help = "Override config file path")]
     pub config: Option<PathBuf>,
+
+    #[arg(long, global = true, help = "Bypass response cache")]
+    pub no_cache: bool,
 }
 
 #[derive(Subcommand)]
@@ -77,5 +81,10 @@ pub enum Command {
     Search {
         /// Search query
         query: String,
+    },
+    /// Manage response cache
+    Cache {
+        #[command(subcommand)]
+        command: cache::CacheCommand,
     },
 }

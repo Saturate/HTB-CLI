@@ -73,13 +73,19 @@ async fn main() {
         unsafe { std::env::set_var("NO_COLOR", "1") };
     }
 
-    if let Err(e) = run(cli.command, format).await {
+    let cache_enabled = cfg.cache.enabled && !cli.no_cache;
+    let cache_dir = config::config_dir()
+        .map(|d| d.join("cache"))
+        .unwrap_or_else(|_| std::env::temp_dir().join("htb-cli-cache"));
+    let app_cache = cache::Cache::new(cache_dir, cache_enabled);
+
+    if let Err(e) = run(cli.command, format, &app_cache).await {
         eprintln!("Error: {e}");
         std::process::exit(1);
     }
 }
 
-async fn run(command: Command, format: OutputFormat) -> anyhow::Result<()> {
+async fn run(command: Command, format: OutputFormat, cache: &cache::Cache) -> anyhow::Result<()> {
     match command {
         Command::Auth { command } => cli::auth::handle(command, format).await,
 
@@ -116,6 +122,11 @@ async fn run(command: Command, format: OutputFormat) -> anyhow::Result<()> {
         Command::Search { query } => {
             let client = authenticated_client()?;
             cli::search::handle(&client, &query).await
+        }
+
+        Command::Cache { command } => {
+            cli::cache::handle(command, cache);
+            Ok(())
         }
     }
 }

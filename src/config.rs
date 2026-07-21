@@ -13,6 +13,27 @@ pub struct HtbConfig {
 
     #[serde(default)]
     pub no_color: bool,
+
+    #[serde(default)]
+    pub cache: CacheConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CacheConfig {
+    #[serde(default = "default_cache_enabled")]
+    pub enabled: bool,
+}
+
+fn default_cache_enabled() -> bool {
+    true
+}
+
+impl Default for CacheConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_cache_enabled(),
+        }
+    }
 }
 
 fn default_output() -> String {
@@ -25,6 +46,7 @@ impl Default for HtbConfig {
             output: default_output(),
             vpn_server: None,
             no_color: false,
+            cache: CacheConfig::default(),
         }
     }
 }
@@ -120,6 +142,7 @@ mod tests {
             output: "json".into(),
             vpn_server: Some(1),
             no_color: true,
+            cache: CacheConfig::default(),
         };
         let serialized = toml::to_string(&config).unwrap();
         let deserialized: HtbConfig = toml::from_str(&serialized).unwrap();
