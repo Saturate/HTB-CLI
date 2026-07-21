@@ -1,4 +1,10 @@
 # Changelog
+## 0.1.4 (2026-07-21)
+
+### Fixes
+
+- allow dirty Cargo.lock during crates.io publish
+
 ## 0.1.3 (2026-07-21)
 
 ### Fixes
