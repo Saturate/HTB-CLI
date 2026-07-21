@@ -32,7 +32,17 @@ pub async fn handle(
             if status.is_empty() {
                 output::print_message("Not connected to VPN.");
             } else {
-                output::json::print_json(&status);
+                match format {
+                    OutputFormat::Json => output::json::print_json(&status),
+                    OutputFormat::Table => {
+                        for entry in &status {
+                            output::print_message(
+                                &serde_json::to_string_pretty(entry)
+                                    .expect("serde_json::Value always serializes"),
+                            );
+                        }
+                    }
+                }
             }
         }
 
