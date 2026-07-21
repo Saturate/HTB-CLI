@@ -32,7 +32,7 @@ jobs:
         id: knope
         run: |
           knope release --dry-run 2>&1 | tee /tmp/knope-output.txt || true
-          VERSION=$(grep -oP 'Bumping version to \K[0-9]+\.[0-9]+\.[0-9]+' /tmp/knope-output.txt || echo "")
+          VERSION=$(grep -oP '(?:Bumping version to |Would add the following to Cargo\.toml: version = )\K[0-9]+\.[0-9]+\.[0-9]+' /tmp/knope-output.txt || echo "")
           if [ -n "$VERSION" ]; then
             echo "version=$VERSION" >> "$GITHUB_OUTPUT"
             echo "should_release=true" >> "$GITHUB_OUTPUT"
