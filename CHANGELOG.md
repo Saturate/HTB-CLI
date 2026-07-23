@@ -1,4 +1,56 @@
 # Changelog
+## 0.1.5 (2026-07-23)
+
+### Features
+
+#### CTF platform support
+
+Interact with HTB CTF events from the terminal via `htb ctf`.
+
+- `htb ctf auth login/status/logout` with separate CTF token
+- `htb ctf events` to list ongoing and upcoming CTF events
+- `htb ctf challenges <event-id>` to browse challenges
+- `htb ctf submit/download/start/stop` for challenge interaction
+- `htb ctf scoreboard/solves/challenge-solves` for rankings and solve feeds
+- Container start polls for ready state and prints the connection URL
+- Guards for non-docker and no-download challenges
+- Hidden scoreboard detection via menu endpoint
+- Cache key collision fix (labs vs CTF paths no longer collide)
+- CTF-specific cache TTL tiers
+
+#### HTTP response caching
+
+Cache API responses to disk with TTL-based expiration. Reduces repeated network calls for data that changes infrequently (user profile, machine lists, challenge lists).
+
+- Tiered TTLs: 5 min for profile data, 2 min for lists, 30 s for active/seasonal data
+- Automatic invalidation on mutations (start/stop machine, submit flag)
+- Cache cleared on login/logout
+- `htb cache clear` command and `--no-cache` flag for bypass
+- Configurable via `~/.htb-cli/config.toml`
+
+#### MCP stdio server mode
+
+Run `htb --mcp-stdio` to start an MCP server over stdin/stdout for AI agent integration.
+
+Tools exposed: get_user_profile, list_machines, get_machine_info, list_challenges, get_challenge_info, start_challenge, submit_challenge_flag, get_active_machine, list_seasons, search.
+
+#### PwnBox commands
+
+Check PwnBox time quota and active instance status.
+
+- `htb pwnbox usage` shows remaining/used/allowed minutes
+- `htb pwnbox status` shows active instance details or "no active instance"
+
+### Fixes
+
+#### Fix HTB account settings URL
+
+The login prompt and README pointed to `/profile/settings` which no longer exists. Updated to `/account-settings`.
+
+#### Fix JSON output broken by pagination footer
+
+`--json` output on paginated commands (machines list, challenges list, sherlocks list) had a plaintext "Page X of Y" line appended after the JSON, breaking parsers. The pagination footer is now suppressed when output format is JSON.
+
 ## 0.1.4 (2026-07-21)
 
 ### Fixes
