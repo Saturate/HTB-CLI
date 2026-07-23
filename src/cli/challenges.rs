@@ -14,6 +14,8 @@ pub enum ChallengeCommand {
         category: Option<String>,
         #[arg(long, help = "Filter by state (active, retired_free)")]
         state: Option<String>,
+        #[arg(long, help = "Search by keyword (server-side)")]
+        keyword: Option<String>,
         #[arg(long, help = "Page number")]
         page: Option<u32>,
     },
@@ -39,6 +41,11 @@ pub enum ChallengeCommand {
         /// Challenge slug
         slug: String,
     },
+    /// Download official writeup (if available)
+    Writeup {
+        /// Challenge slug
+        slug: String,
+    },
     /// Submit a flag
     Submit {
         /// Challenge ID
@@ -57,9 +64,13 @@ pub async fn handle(
         ChallengeCommand::List {
             category,
             state,
+            keyword,
             page,
         } => {
-            let result = client.challenges().list(page.unwrap_or(1), 100).await?;
+            let result = client
+                .challenges()
+                .list(page.unwrap_or(1), 100, keyword.as_deref())
+                .await?;
             let mut challenges = result.data;
 
             if let Some(ref cat_filter) = category {
@@ -164,6 +175,28 @@ pub async fn handle(
             let detail = client.challenges().info(&slug).await?;
             let resp = client.challenges().stop(detail.id).await?;
             output::print_message(&resp.message);
+        }
+
+        ChallengeCommand::Writeup { slug } => {
+            let detail = client.challenges().info(&slug).await?;
+            let writeup = client.challenges().writeup_info(detail.id).await?;
+            match writeup.data.official {
+                Some(w) if w.url.is_some() => {
+                    let bytes = client.challenges().writeup_download(detail.id).await?;
+                    let filename = w.filename.unwrap_or_else(|| format!("{slug}-writeup.pdf"));
+                    let safe_name =
+                        crate::sanitize_filename(&filename, &format!("{slug}-writeup.pdf"));
+                    std::fs::write(&safe_name, &bytes)?;
+                    output::print_message(&format!(
+                        "Downloaded {} ({} bytes)",
+                        safe_name,
+                        bytes.len()
+                    ));
+                }
+                _ => {
+                    output::print_message("No official writeup available for this challenge.");
+                }
+            }
         }
 
         ChallengeCommand::Submit { id, flag } => {

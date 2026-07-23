@@ -114,6 +114,25 @@ pub struct ChallengeDownloadResponse {
     pub expires_in: Option<u64>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ChallengeWriteupResponse {
+    pub data: ChallengeWriteupData,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ChallengeWriteupData {
+    #[serde(default)]
+    pub official: Option<ChallengeWriteup>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ChallengeWriteup {
+    #[serde(default)]
+    pub filename: Option<String>,
+    #[serde(default)]
+    pub url: Option<String>,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ChallengeOwnResponse {
     pub message: String,

@@ -183,7 +183,7 @@ impl HtbMcp {
         let result = self
             .client
             .challenges()
-            .list(page, 100)
+            .list(page, 100, None)
             .await
             .map_err(|e| e.to_string())?;
         let mut challenges = result.data;
