@@ -115,6 +115,11 @@ mod tests {
         assert!(t.flag);
         let missing: T = serde_json::from_str(r#"{}"#).unwrap();
         assert!(!missing.flag);
+
+        // Rejects types the API shouldn't send but might
+        assert!(serde_json::from_str::<T>(r#"{"flag": 0}"#).is_err());
+        assert!(serde_json::from_str::<T>(r#"{"flag": 1}"#).is_err());
+        assert!(serde_json::from_str::<T>(r#"{"flag": "true"}"#).is_err());
     }
 
     #[test]
@@ -167,30 +172,4 @@ mod tests {
         assert_eq!(e.val.as_deref(), Some(""));
     }
 
-    #[test]
-    fn bool_or_null_handles_integers() {
-        #[derive(Deserialize)]
-        struct T {
-            #[serde(default, deserialize_with = "deserialize_bool_or_null")]
-            flag: bool,
-        }
-        // Integers are not bools in JSON - these should fail to parse
-        // but the API might send them, so document the behavior
-        let zero = serde_json::from_str::<T>(r#"{"flag": 0}"#);
-        let one = serde_json::from_str::<T>(r#"{"flag": 1}"#);
-        // serde's Option<bool> rejects integers, so these error
-        assert!(zero.is_err());
-        assert!(one.is_err());
-    }
-
-    #[test]
-    fn bool_or_null_rejects_string() {
-        #[derive(Deserialize)]
-        struct T {
-            #[serde(default, deserialize_with = "deserialize_bool_or_null")]
-            flag: bool,
-        }
-        let s = serde_json::from_str::<T>(r#"{"flag": "true"}"#);
-        assert!(s.is_err());
-    }
 }
