@@ -60,7 +60,44 @@ htb user info 1234567
 
 # Search
 htb search nmap
+
+# PwnBox
+htb pwnbox usage
+htb pwnbox status
 ```
+
+### CTF Events
+
+The CTF platform uses a separate token and API. Authenticate first, then browse events, work challenges, and track scores.
+
+```bash
+# Authenticate with the CTF platform (separate token from labs)
+htb ctf auth login
+htb ctf auth status
+
+# Browse events
+htb ctf events                                  # ongoing and upcoming
+htb ctf events --all                            # include past events
+htb ctf info ctf-try-out-1434                   # event details by slug
+
+# Work challenges
+htb ctf challenges 1434                         # list challenges in event
+htb ctf challenges 1434 --difficulty easy       # filter by difficulty
+htb ctf start 1434 31855                        # start a docker container
+htb ctf download 1434 31855                     # download challenge files
+htb ctf submit 31855 'HTB{flag_here}'           # submit a flag
+htb ctf stop 1434 31855                         # stop the container
+
+# Scoreboard and solves
+htb ctf scoreboard 1434                         # team rankings
+htb ctf solves 1434                             # recent solves feed
+htb ctf challenge-solves 31855                  # who solved a challenge
+
+# Clean up
+htb ctf auth logout
+```
+
+The CTF token is stored separately at `~/.htb-cli/.ctf-token`. Get it from your CTF platform settings after logging in at [ctf.hackthebox.com](https://ctf.hackthebox.com).
 
 ## Output
 
