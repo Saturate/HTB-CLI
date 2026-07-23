@@ -171,5 +171,4 @@ mod tests {
         let e: T = serde_json::from_str(r#"{"val": ""}"#).unwrap();
         assert_eq!(e.val.as_deref(), Some(""));
     }
-
 }

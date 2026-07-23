@@ -12,6 +12,8 @@ pub enum ChallengeCommand {
     List {
         #[arg(long, help = "Filter by category")]
         category: Option<String>,
+        #[arg(long, help = "Filter by state (active, retired_free)")]
+        state: Option<String>,
         #[arg(long, help = "Page number")]
         page: Option<u32>,
     },
@@ -52,7 +54,11 @@ pub async fn handle(
     format: OutputFormat,
 ) -> anyhow::Result<()> {
     match cmd {
-        ChallengeCommand::List { category, page } => {
+        ChallengeCommand::List {
+            category,
+            state,
+            page,
+        } => {
             let result = client.challenges().list(page.unwrap_or(1), 100).await?;
             let mut challenges = result.data;
 
@@ -61,6 +67,14 @@ pub async fn handle(
                     c.category_name
                         .as_ref()
                         .is_some_and(|cn| cn.eq_ignore_ascii_case(cat_filter))
+                });
+            }
+
+            if let Some(ref state_filter) = state {
+                challenges.retain(|c| {
+                    c.state
+                        .as_ref()
+                        .is_some_and(|s| s.eq_ignore_ascii_case(state_filter))
                 });
             }
 
@@ -85,12 +99,23 @@ pub async fn handle(
                 ("Name", detail.name.clone()),
                 ("Difficulty", detail.difficulty.clone().unwrap_or_default()),
                 ("Category", detail.category_name.clone().unwrap_or_default()),
-                ("Points", detail.points.clone().unwrap_or_default()),
+                (
+                    "Points",
+                    detail.points.clone().unwrap_or_else(|| "0".into()),
+                ),
+                (
+                    "XP",
+                    detail
+                        .experience_points
+                        .map(|xp| xp.to_string())
+                        .unwrap_or_else(|| "0".into()),
+                ),
                 (
                     "Rating",
                     detail.stars.map(|s| format!("{s:.1}")).unwrap_or_default(),
                 ),
                 ("Solves", detail.solves.to_string()),
+                ("State", detail.state.clone().unwrap_or_default()),
                 (
                     "First Blood",
                     detail

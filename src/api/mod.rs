@@ -398,13 +398,15 @@ impl HtbClient {
         {
             return Some(Duration::from_secs(300));
         }
-        // Labs: profiles (2 min)
-        if path.contains("/machine/profile/")
-            || path.contains("/challenge/info/")
+        // Labs: challenge/machine/sherlock details (60 min, mostly static)
+        if path.contains("/challenge/info/")
+            || path.contains("/machine/profile/")
             || path.contains("/sherlocks/")
-            || path.contains("/user/info")
-            || path.contains("/user/profile/")
         {
+            return Some(Duration::from_secs(3600));
+        }
+        // Labs: user profiles (2 min, points/rank change after submissions)
+        if path.contains("/user/info") || path.contains("/user/profile/") {
             return Some(Duration::from_secs(120));
         }
         None
