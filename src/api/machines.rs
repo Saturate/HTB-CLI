@@ -58,6 +58,12 @@ impl MachineApi<'_> {
             .await
     }
 
+    pub async fn extend(&self, machine_id: u64) -> Result<ActionResponse, HtbError> {
+        self.0
+            .post("/api/v4/vm/extend", &json!({"machine_id": machine_id}))
+            .await
+    }
+
     pub async fn active(&self) -> Result<Option<ActiveVmInfo>, HtbError> {
         let resp: ActiveVmResponse = self.0.get("/api/v5/virtual_machine/active").await?;
         Ok(resp.info)

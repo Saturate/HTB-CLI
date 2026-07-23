@@ -159,6 +159,20 @@ mod tests {
     }
 
     #[test]
+    fn deserialize_machines_list_live() {
+        let json = include_str!("../../tests/fixtures/v5-machines-list-live.json");
+        let result: Paginated<Machine> = serde_json::from_str(json).unwrap();
+        assert_eq!(result.data.len(), 3);
+        assert_eq!(result.data[0].name, "TestMachine-1");
+        assert_eq!(result.data[0].os, "Linux");
+        assert_eq!(result.data[0].difficulty, Some(28));
+        assert!(result.data[0].free);
+        assert_eq!(result.data[0].state.as_deref(), Some("retired_free"));
+        assert!(result.data[0].labels.iter().any(|l| l.name == "STAFF PICK"));
+        assert!(result.data[0].first_creator.is_some());
+    }
+
+    #[test]
     fn deserialize_active_vm_null() {
         let json = include_str!("../../tests/fixtures/v5-virtual-machine-active.json");
         let result: ActiveVmResponse = serde_json::from_str(json).unwrap();

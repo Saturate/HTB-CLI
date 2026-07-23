@@ -101,7 +101,7 @@ impl Cache {
         for entry in entries.flatten() {
             let name = entry.file_name();
             let name = name.to_string_lossy();
-            if name.starts_with(prefix) && name.ends_with(".json") {
+            if name.contains(prefix) && name.ends_with(".json") {
                 let _ = fs::remove_file(entry.path());
             }
         }
@@ -152,16 +152,12 @@ impl Cache {
 }
 
 fn sanitize_url(url: &str) -> String {
-    let path = url
+    let without_scheme = url
         .strip_prefix("https://")
         .or_else(|| url.strip_prefix("http://"))
         .unwrap_or(url);
-    // Strip the host portion
-    let path = match path.find('/') {
-        Some(i) => &path[i + 1..],
-        None => path,
-    };
-    path.chars()
+    without_scheme
+        .chars()
         .map(|c| {
             if c.is_ascii_alphanumeric() || c == '_' || c == '-' || c == '.' {
                 c
@@ -281,9 +277,18 @@ mod tests {
 
         cache.invalidate_pattern("api_v4_machine");
 
-        assert!(cache.get(url1, Duration::from_secs(300)).is_none());
-        assert!(cache.get(url2, Duration::from_secs(300)).is_none());
-        assert!(cache.get(url3, Duration::from_secs(300)).is_some());
+        assert!(
+            cache.get(url1, Duration::from_secs(300)).is_none(),
+            "url1 should be invalidated"
+        );
+        assert!(
+            cache.get(url2, Duration::from_secs(300)).is_none(),
+            "url2 should be invalidated"
+        );
+        assert!(
+            cache.get(url3, Duration::from_secs(300)).is_some(),
+            "url3 should survive"
+        );
     }
 
     #[test]
@@ -303,6 +308,15 @@ mod tests {
     }
 
     #[test]
+    fn sanitize_url_separates_labs_and_ctf() {
+        let labs = sanitize_url("https://labs.hackthebox.com/api/users/profile");
+        let ctf = sanitize_url("https://ctf.hackthebox.com/api/users/profile");
+        assert_ne!(labs, ctf);
+        assert!(labs.starts_with("labs.hackthebox.com_"));
+        assert!(ctf.starts_with("ctf.hackthebox.com_"));
+    }
+
+    #[test]
     fn disabled_cache_is_noop() {
         let dir = std::env::temp_dir().join(format!("htb-cache-disabled-{}", std::process::id()));
         let cache = Cache::new(dir, false);
@@ -316,11 +330,11 @@ mod tests {
     fn sanitize_url_produces_safe_filenames() {
         assert_eq!(
             sanitize_url("https://labs.hackthebox.com/api/v4/machine/profile/Bedside"),
-            "api_v4_machine_profile_Bedside"
+            "labs.hackthebox.com_api_v4_machine_profile_Bedside"
         );
         assert_eq!(
             sanitize_url("https://labs.hackthebox.com/api/v5/machines?per_page=100&page=1"),
-            "api_v5_machines_per_page_100_page_1"
+            "labs.hackthebox.com_api_v5_machines_per_page_100_page_1"
         );
     }
 }

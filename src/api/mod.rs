@@ -1,4 +1,5 @@
 pub mod challenges;
+pub mod ctf;
 pub mod machines;
 pub mod search;
 pub mod seasons;
@@ -90,7 +91,6 @@ impl HtbClient {
         Self::build(token, BASE_URL.to_string(), Some(cache))
     }
 
-    #[cfg(test)]
     pub fn with_base_url(token: String, base_url: String) -> Self {
         Self::build(token, base_url, None)
     }
@@ -173,6 +173,49 @@ impl HtbClient {
         Ok(result)
     }
 
+    pub async fn post_no_content<B: Serialize>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<(), HtbError> {
+        self.wait_for_rate_limit().await;
+
+        let url = format!("{}{}", self.base_url, path);
+        tracing::debug!(url = %url, "POST (no content)");
+
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(&self.token)
+            .json(body)
+            .send()
+            .await?;
+
+        self.rate_limit.update(resp.headers());
+        self.log_rate_limit();
+
+        let status = resp.status();
+        if status == 401 {
+            return Err(HtbError::NotAuthenticated);
+        }
+        if status == 429 {
+            return Err(HtbError::RateLimited);
+        }
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            let message = serde_json::from_str::<ApiErrorBody>(&body)
+                .map(|e| e.message)
+                .unwrap_or(body);
+            return Err(HtbError::Api {
+                status: status.as_u16(),
+                message,
+            });
+        }
+
+        self.invalidate_after_post(path);
+        Ok(())
+    }
+
     fn invalidate_after_post(&self, path: &str) {
         let Some(cache) = &self.cache else { return };
         if path.contains("/vm/spawn")
@@ -192,6 +235,14 @@ impl HtbClient {
         }
         if path.contains("/sherlocks/") && path.contains("/flag") {
             cache.invalidate_pattern("api_v4_sherlock");
+        }
+        // CTF mutations
+        if path.contains("/flags/own")
+            || path.contains("/challenges/containers/start")
+            || path.contains("/challenges/containers/stop")
+        {
+            cache.invalidate_pattern("ctf.hackthebox.com_api_ctfs_");
+            cache.invalidate_pattern("ctf.hackthebox.com_api_challenges_");
         }
     }
 
@@ -291,6 +342,10 @@ impl HtbClient {
         }
     }
 
+    pub fn ctf(&self) -> ctf::CtfApi<'_> {
+        ctf::CtfApi(self)
+    }
+
     pub fn user(&self) -> user::UserApi<'_> {
         user::UserApi(self)
     }
@@ -320,31 +375,67 @@ impl HtbClient {
     }
 
     fn ttl_for_path(&self, path: &str) -> Option<Duration> {
-        if path.contains("/download_link") {
+        if path.contains("/download") {
             return None;
         }
-        // Reference data (30 min)
+
+        let is_ctf = self.base_url.contains("ctf.hackthebox.com");
+        if is_ctf {
+            return self.ttl_for_ctf_path(path);
+        }
+
+        // Labs: reference data (30 min)
         if path.contains("/categories/list")
             || path.contains("/season/list")
             || path.contains("/tags/list")
         {
             return Some(Duration::from_secs(1800));
         }
-        // Lists (5 min)
+        // Labs: lists (5 min)
         if path.starts_with("/api/v5/machines")
             || path.starts_with("/api/v4/challenges?")
             || path.starts_with("/api/v4/sherlocks?")
         {
             return Some(Duration::from_secs(300));
         }
-        // Profiles (2 min)
-        if path.contains("/machine/profile/")
-            || path.contains("/challenge/info/")
+        // Labs: challenge/machine/sherlock details (60 min, mostly static)
+        if path.contains("/challenge/info/")
+            || path.contains("/machine/profile/")
             || path.contains("/sherlocks/")
-            || path.contains("/user/info")
-            || path.contains("/user/profile/")
         {
+            return Some(Duration::from_secs(3600));
+        }
+        // Labs: user profiles (2 min, points/rank change after submissions)
+        if path.contains("/user/info") || path.contains("/user/profile/") {
             return Some(Duration::from_secs(120));
+        }
+        None
+    }
+
+    fn ttl_for_ctf_path(&self, path: &str) -> Option<Duration> {
+        // Reference data (30 min)
+        if path.starts_with("/api/public/challenge-categories") {
+            return Some(Duration::from_secs(1800));
+        }
+        // Event list and details (5 min)
+        if path == "/api/ctfs" || path.starts_with("/api/ctfs/details/") {
+            return Some(Duration::from_secs(300));
+        }
+        // Profiles (2 min)
+        if path.starts_with("/api/users/profile") {
+            return Some(Duration::from_secs(120));
+        }
+        // Live data: challenges, scoreboard, solves (30 s)
+        if path.starts_with("/api/ctfs/scores/")
+            || path.starts_with("/api/ctfs/solves/")
+            || path.starts_with("/api/ctfs/score-charts/")
+            || path.starts_with("/api/challenges/")
+        {
+            return Some(Duration::from_secs(30));
+        }
+        // Event data with challenges (30 s)
+        if path.starts_with("/api/ctfs/") {
+            return Some(Duration::from_secs(30));
         }
         None
     }

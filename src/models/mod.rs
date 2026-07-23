@@ -1,6 +1,7 @@
 use serde::{Deserialize, Deserializer, Serialize};
 
 pub mod challenge;
+pub mod ctf;
 pub mod machine;
 pub mod season;
 pub mod sherlock;
@@ -114,6 +115,11 @@ mod tests {
         assert!(t.flag);
         let missing: T = serde_json::from_str(r#"{}"#).unwrap();
         assert!(!missing.flag);
+
+        // Rejects types the API shouldn't send but might
+        assert!(serde_json::from_str::<T>(r#"{"flag": 0}"#).is_err());
+        assert!(serde_json::from_str::<T>(r#"{"flag": 1}"#).is_err());
+        assert!(serde_json::from_str::<T>(r#"{"flag": "true"}"#).is_err());
     }
 
     #[test]
@@ -129,5 +135,40 @@ mod tests {
         assert_eq!(i.val.as_deref(), Some("0"));
         let n: T = serde_json::from_str(r#"{"val": null}"#).unwrap();
         assert!(n.val.is_none());
+    }
+
+    #[test]
+    fn string_or_int_handles_bool() {
+        #[derive(Deserialize)]
+        struct T {
+            #[serde(default, deserialize_with = "deserialize_string_or_int")]
+            val: Option<String>,
+        }
+        let t: T = serde_json::from_str(r#"{"val": true}"#).unwrap();
+        assert_eq!(t.val.as_deref(), Some("true"));
+        let f: T = serde_json::from_str(r#"{"val": false}"#).unwrap();
+        assert_eq!(f.val.as_deref(), Some("false"));
+    }
+
+    #[test]
+    fn string_or_int_handles_float() {
+        #[derive(Deserialize)]
+        struct T {
+            #[serde(default, deserialize_with = "deserialize_string_or_int")]
+            val: Option<String>,
+        }
+        let f: T = serde_json::from_str(r#"{"val": 4.5}"#).unwrap();
+        assert_eq!(f.val.as_deref(), Some("4.5"));
+    }
+
+    #[test]
+    fn string_or_int_handles_empty_string() {
+        #[derive(Deserialize)]
+        struct T {
+            #[serde(default, deserialize_with = "deserialize_string_or_int")]
+            val: Option<String>,
+        }
+        let e: T = serde_json::from_str(r#"{"val": ""}"#).unwrap();
+        assert_eq!(e.val.as_deref(), Some(""));
     }
 }

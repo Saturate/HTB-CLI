@@ -48,6 +48,11 @@ pub enum MachineCommand {
         /// The flag
         flag: String,
     },
+    /// Extend the active machine timer
+    Extend {
+        /// Machine name or ID (defaults to active machine)
+        name_or_id: Option<String>,
+    },
     /// Show currently active machine
     Active,
     /// Manage todo list
@@ -205,6 +210,22 @@ pub async fn handle(
                 .machines()
                 .submit_flag(machine.id, &flag, difficulty)
                 .await?;
+            output::print_message(&resp.message);
+        }
+
+        MachineCommand::Extend { name_or_id } => {
+            let machine_id = match name_or_id {
+                Some(name) => client.machines().profile(&name).await?.id,
+                None => {
+                    client
+                        .machines()
+                        .active()
+                        .await?
+                        .ok_or_else(|| anyhow::anyhow!("No active machine. Specify a name or ID."))?
+                        .id
+                }
+            };
+            let resp = client.machines().extend(machine_id).await?;
             output::print_message(&resp.message);
         }
 

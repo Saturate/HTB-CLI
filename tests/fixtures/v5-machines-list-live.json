@@ -1,0 +1,295 @@
+{
+  "data": [
+    {
+      "id": 351,
+      "avatar": "https://example.com/machine-avatar.png",
+      "name": "TestMachine-1",
+      "os": "Linux",
+      "points": 0,
+      "rating": 4.6,
+      "ratingCount": 4085,
+      "releaseDate": "2021-06-05T19:00:00.000Z",
+      "retiredDate": "2021-10-02T15:00:14.000Z",
+      "free": true,
+      "difficulty": 28,
+      "difficultyText": "Easy",
+      "userOwnsCount": 107263,
+      "authUserInUserOwns": true,
+      "rootOwnsCount": 98763,
+      "authUserHasReviewed": false,
+      "authUserInRootOwns": true,
+      "todo": false,
+      "competitive": false,
+      "active": null,
+      "feedbackForChart": {
+        "counterCake": 20125,
+        "counterVeryEasy": 22782,
+        "counterEasy": 38474,
+        "counterTooEasy": 13660,
+        "counterMedium": 7239,
+        "counterBitHard": 1789,
+        "counterHard": 1094,
+        "counterTooHard": 272,
+        "counterExHard": 108,
+        "counterBrainFuck": 400
+      },
+      "ip": null,
+      "playInfo": {
+        "isSpawned": null,
+        "isSpawning": null,
+        "isActive": false,
+        "active_player_count": null,
+        "expires_at": null,
+        "life_remaining": null
+      },
+      "labels": [
+        {
+          "color": "blue",
+          "name": "STAFF PICK"
+        }
+      ],
+      "recommended": true,
+      "priceTier": 1,
+      "requiredSubscription": null,
+      "firstCreator": {
+        "id": 52045,
+        "name": "testcreator",
+        "avatar": "https://example.com/avatar.png",
+        "isRespected": false,
+        "profile_url": "https://app.hackthebox.com/profile/52045"
+      },
+      "cocreators": [],
+      "retiring": {
+        "id": 314,
+        "name": "testmachine-retiring",
+        "avatar": "https://example.com/avatar.png",
+        "os": "Linux",
+        "difficultyText": "Easy"
+      },
+      "state": "retired_free",
+      "taskCompletionPercentage": "100%",
+      "spFlag": 0,
+      "isSingleFlag": false
+    },
+    {
+      "id": 957,
+      "avatar": "https://example.com/machine-avatar.png",
+      "name": "TestMachine-2",
+      "os": "Linux",
+      "points": 0,
+      "rating": 4.7,
+      "ratingCount": 47,
+      "releaseDate": "2026-06-23T14:30:00.000Z",
+      "retiredDate": "2026-06-23T14:30:00.000Z",
+      "free": true,
+      "difficulty": 45,
+      "difficultyText": "Medium",
+      "userOwnsCount": 1530,
+      "authUserInUserOwns": false,
+      "rootOwnsCount": 1059,
+      "authUserHasReviewed": false,
+      "authUserInRootOwns": false,
+      "todo": false,
+      "competitive": false,
+      "active": null,
+      "feedbackForChart": {
+        "counterCake": 36,
+        "counterVeryEasy": 48,
+        "counterEasy": 188,
+        "counterTooEasy": 168,
+        "counterMedium": 184,
+        "counterBitHard": 88,
+        "counterHard": 79,
+        "counterTooHard": 27,
+        "counterExHard": 7,
+        "counterBrainFuck": 19
+      },
+      "ip": null,
+      "playInfo": {
+        "isSpawned": null,
+        "isSpawning": null,
+        "isActive": false,
+        "active_player_count": null,
+        "expires_at": null,
+        "life_remaining": null
+      },
+      "labels": [
+        {
+          "color": "blue",
+          "name": "STAFF PICK"
+        }
+      ],
+      "recommended": true,
+      "priceTier": 0,
+      "requiredSubscription": null,
+      "firstCreator": {
+        "id": 123322,
+        "name": "testcreator",
+        "avatar": "https://example.com/avatar.png",
+        "isRespected": false
+      },
+      "cocreators": [],
+      "retiring": null,
+      "state": "retired_free",
+      "taskCompletionPercentage": "0%",
+      "spFlag": 0,
+      "isSingleFlag": false
+    },
+    {
+      "id": 954,
+      "avatar": "https://example.com/machine-avatar.png",
+      "name": "TestMachine-3",
+      "os": "Windows",
+      "points": 0,
+      "rating": 4.8,
+      "ratingCount": 6,
+      "releaseDate": "2026-06-23T14:30:00.000Z",
+      "retiredDate": "2026-06-23T14:30:00.000Z",
+      "free": true,
+      "difficulty": 79,
+      "difficultyText": "Insane",
+      "userOwnsCount": 160,
+      "authUserInUserOwns": true,
+      "rootOwnsCount": 158,
+      "authUserHasReviewed": false,
+      "authUserInRootOwns": true,
+      "todo": false,
+      "competitive": false,
+      "active": null,
+      "feedbackForChart": {
+        "counterCake": 4,
+        "counterVeryEasy": 3,
+        "counterEasy": 7,
+        "counterTooEasy": 2,
+        "counterMedium": 3,
+        "counterBitHard": 1,
+        "counterHard": 10,
+        "counterTooHard": 10,
+        "counterExHard": 19,
+        "counterBrainFuck": 41
+      },
+      "ip": null,
+      "playInfo": {
+        "isSpawned": null,
+        "isSpawning": null,
+        "isActive": false,
+        "active_player_count": null,
+        "expires_at": null,
+        "life_remaining": null
+      },
+      "labels": [
+        {
+          "color": "blue",
+          "name": "STAFF PICK"
+        }
+      ],
+      "recommended": true,
+      "priceTier": 0,
+      "requiredSubscription": null,
+      "firstCreator": {
+        "id": 338684,
+        "name": "testcreator",
+        "avatar": "https://example.com/avatar.png",
+        "isRespected": true
+      },
+      "cocreators": [],
+      "retiring": null,
+      "state": "retired_free",
+      "taskCompletionPercentage": "100%",
+      "spFlag": 0,
+      "isSingleFlag": false
+    }
+  ],
+  "links": {
+    "first": "https://labs.hackthebox.com/api/v5/machines?per_page=5&page=1",
+    "last": "https://labs.hackthebox.com/api/v5/machines?per_page=5&page=109",
+    "prev": null,
+    "next": "https://labs.hackthebox.com/api/v5/machines?per_page=5&page=2"
+  },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 1,
+    "links": [
+      {
+        "url": null,
+        "label": "&laquo; Previous",
+        "active": false
+      },
+      {
+        "url": "https://labs.hackthebox.com/api/v5/machines?per_page=5&page=1",
+        "label": "1",
+        "active": true
+      },
+      {
+        "url": "https://labs.hackthebox.com/api/v5/machines?per_page=5&page=2",
+        "label": "2",
+        "active": false
+      },
+      {
+        "url": "https://labs.hackthebox.com/api/v5/machines?per_page=5&page=3",
+        "label": "3",
+        "active": false
+      },
+      {
+        "url": "https://labs.hackthebox.com/api/v5/machines?per_page=5&page=4",
+        "label": "4",
+        "active": false
+      },
+      {
+        "url": "https://labs.hackthebox.com/api/v5/machines?per_page=5&page=5",
+        "label": "5",
+        "active": false
+      },
+      {
+        "url": "https://labs.hackthebox.com/api/v5/machines?per_page=5&page=6",
+        "label": "6",
+        "active": false
+      },
+      {
+        "url": "https://labs.hackthebox.com/api/v5/machines?per_page=5&page=7",
+        "label": "7",
+        "active": false
+      },
+      {
+        "url": "https://labs.hackthebox.com/api/v5/machines?per_page=5&page=8",
+        "label": "8",
+        "active": false
+      },
+      {
+        "url": "https://labs.hackthebox.com/api/v5/machines?per_page=5&page=9",
+        "label": "9",
+        "active": false
+      },
+      {
+        "url": "https://labs.hackthebox.com/api/v5/machines?per_page=5&page=10",
+        "label": "10",
+        "active": false
+      },
+      {
+        "url": null,
+        "label": "...",
+        "active": false
+      },
+      {
+        "url": "https://labs.hackthebox.com/api/v5/machines?per_page=5&page=108",
+        "label": "108",
+        "active": false
+      },
+      {
+        "url": "https://labs.hackthebox.com/api/v5/machines?per_page=5&page=109",
+        "label": "109",
+        "active": false
+      },
+      {
+        "url": "https://labs.hackthebox.com/api/v5/machines?per_page=5&page=2",
+        "label": "Next &raquo;",
+        "active": false
+      }
+    ],
+    "path": "https://labs.hackthebox.com/api/v5/machines",
+    "per_page": 5,
+    "to": 3,
+    "total": 3
+  }
+}

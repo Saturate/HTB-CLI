@@ -4,6 +4,7 @@ use crate::error::HtbError;
 use crate::models::challenge::{
     Challenge, ChallengeCategoriesResponse, ChallengeCategory, ChallengeDetail,
     ChallengeDetailResponse, ChallengeDownloadResponse, ChallengeOwnResponse,
+    ChallengeWriteupResponse,
 };
 use crate::models::{ActionResponse, Paginated};
 
@@ -12,12 +13,17 @@ use super::HtbClient;
 pub struct ChallengeApi<'a>(pub(crate) &'a HtbClient);
 
 impl ChallengeApi<'_> {
-    pub async fn list(&self, page: u32, per_page: u32) -> Result<Paginated<Challenge>, HtbError> {
-        self.0
-            .get(&format!(
-                "/api/v4/challenges?per_page={per_page}&page={page}"
-            ))
-            .await
+    pub async fn list(
+        &self,
+        page: u32,
+        per_page: u32,
+        keyword: Option<&str>,
+    ) -> Result<Paginated<Challenge>, HtbError> {
+        let mut url = format!("/api/v4/challenges?per_page={per_page}&page={page}");
+        if let Some(kw) = keyword {
+            url.push_str(&format!("&keyword={}", super::encode_path(kw)));
+        }
+        self.0.get(&url).await
     }
 
     pub async fn categories(&self) -> Result<Vec<ChallengeCategory>, HtbError> {
@@ -76,5 +82,22 @@ impl ChallengeApi<'_> {
 
     pub async fn download_file(&self, url: &str) -> Result<Vec<u8>, HtbError> {
         self.0.get_bytes(url).await
+    }
+
+    pub async fn writeup_info(
+        &self,
+        challenge_id: u64,
+    ) -> Result<ChallengeWriteupResponse, HtbError> {
+        self.0
+            .get(&format!("/api/v4/challenge/{challenge_id}/writeup"))
+            .await
+    }
+
+    pub async fn writeup_download(&self, challenge_id: u64) -> Result<Vec<u8>, HtbError> {
+        self.0
+            .get_bytes(&format!(
+                "/api/v4/challenge/{challenge_id}/writeup/official"
+            ))
+            .await
     }
 }

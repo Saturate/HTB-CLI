@@ -12,6 +12,10 @@ pub enum ChallengeCommand {
     List {
         #[arg(long, help = "Filter by category")]
         category: Option<String>,
+        #[arg(long, help = "Filter by state (active, retired_free)")]
+        state: Option<String>,
+        #[arg(long, help = "Search by keyword (server-side)")]
+        keyword: Option<String>,
         #[arg(long, help = "Page number")]
         page: Option<u32>,
     },
@@ -37,6 +41,11 @@ pub enum ChallengeCommand {
         /// Challenge slug
         slug: String,
     },
+    /// Download official writeup (if available)
+    Writeup {
+        /// Challenge slug
+        slug: String,
+    },
     /// Submit a flag
     Submit {
         /// Challenge ID
@@ -52,8 +61,16 @@ pub async fn handle(
     format: OutputFormat,
 ) -> anyhow::Result<()> {
     match cmd {
-        ChallengeCommand::List { category, page } => {
-            let result = client.challenges().list(page.unwrap_or(1), 100).await?;
+        ChallengeCommand::List {
+            category,
+            state,
+            keyword,
+            page,
+        } => {
+            let result = client
+                .challenges()
+                .list(page.unwrap_or(1), 100, keyword.as_deref())
+                .await?;
             let mut challenges = result.data;
 
             if let Some(ref cat_filter) = category {
@@ -61,6 +78,14 @@ pub async fn handle(
                     c.category_name
                         .as_ref()
                         .is_some_and(|cn| cn.eq_ignore_ascii_case(cat_filter))
+                });
+            }
+
+            if let Some(ref state_filter) = state {
+                challenges.retain(|c| {
+                    c.state
+                        .as_ref()
+                        .is_some_and(|s| s.eq_ignore_ascii_case(state_filter))
                 });
             }
 
@@ -85,12 +110,23 @@ pub async fn handle(
                 ("Name", detail.name.clone()),
                 ("Difficulty", detail.difficulty.clone().unwrap_or_default()),
                 ("Category", detail.category_name.clone().unwrap_or_default()),
-                ("Points", detail.points.clone().unwrap_or_default()),
+                (
+                    "Points",
+                    detail.points.clone().unwrap_or_else(|| "0".into()),
+                ),
+                (
+                    "XP",
+                    detail
+                        .experience_points
+                        .map(|xp| xp.to_string())
+                        .unwrap_or_else(|| "0".into()),
+                ),
                 (
                     "Rating",
                     detail.stars.map(|s| format!("{s:.1}")).unwrap_or_default(),
                 ),
                 ("Solves", detail.solves.to_string()),
+                ("State", detail.state.clone().unwrap_or_default()),
                 (
                     "First Blood",
                     detail
@@ -139,6 +175,28 @@ pub async fn handle(
             let detail = client.challenges().info(&slug).await?;
             let resp = client.challenges().stop(detail.id).await?;
             output::print_message(&resp.message);
+        }
+
+        ChallengeCommand::Writeup { slug } => {
+            let detail = client.challenges().info(&slug).await?;
+            let writeup = client.challenges().writeup_info(detail.id).await?;
+            match writeup.data.official {
+                Some(w) if w.url.is_some() => {
+                    let bytes = client.challenges().writeup_download(detail.id).await?;
+                    let filename = w.filename.unwrap_or_else(|| format!("{slug}-writeup.pdf"));
+                    let safe_name =
+                        crate::sanitize_filename(&filename, &format!("{slug}-writeup.pdf"));
+                    std::fs::write(&safe_name, &bytes)?;
+                    output::print_message(&format!(
+                        "Downloaded {} ({} bytes)",
+                        safe_name,
+                        bytes.len()
+                    ));
+                }
+                _ => {
+                    output::print_message("No official writeup available for this challenge.");
+                }
+            }
         }
 
         ChallengeCommand::Submit { id, flag } => {

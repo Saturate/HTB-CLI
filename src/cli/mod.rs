@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod cache;
 pub mod challenges;
+pub mod ctf;
 pub mod machines;
 pub mod search;
 pub mod seasons;
@@ -76,6 +77,11 @@ pub enum Command {
     User {
         #[command(subcommand)]
         command: user::UserCommand,
+    },
+    /// Interact with CTF events and challenges
+    Ctf {
+        #[command(subcommand)]
+        command: ctf::CtfCommand,
     },
     /// Search across all content
     Search {

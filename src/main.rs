@@ -105,6 +105,8 @@ async fn run(
             cli::user::handle(&client, command, format).await
         }
 
+        Command::Ctf { command } => cli::ctf::handle(command, format, &app_cache).await,
+
         Command::Search { query } => {
             let client = authenticated_client(app_cache)?;
             cli::search::handle(&client, &query).await

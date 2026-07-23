@@ -114,6 +114,25 @@ pub struct ChallengeDownloadResponse {
     pub expires_in: Option<u64>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ChallengeWriteupResponse {
+    pub data: ChallengeWriteupData,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ChallengeWriteupData {
+    #[serde(default)]
+    pub official: Option<ChallengeWriteup>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ChallengeWriteup {
+    #[serde(default)]
+    pub filename: Option<String>,
+    #[serde(default)]
+    pub url: Option<String>,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ChallengeOwnResponse {
     pub message: String,
@@ -209,5 +228,49 @@ mod tests {
         let json = include_str!("../../tests/fixtures/challenge-own-success.json");
         let result: ChallengeOwnResponse = serde_json::from_str(json).unwrap();
         assert_eq!(result.message, "Congratulations!");
+    }
+
+    #[test]
+    fn deserialize_challenge_reversing_download_only() {
+        let json = include_str!("../../tests/fixtures/challenge-info-reversing.json");
+        let result: ChallengeDetailResponse = serde_json::from_str(json).unwrap();
+        let c = &result.challenge;
+        assert_eq!(c.name, "TestChallenge-Rev");
+        assert_eq!(c.category_name.as_deref(), Some("Reversing"));
+        assert_eq!(c.points.as_deref(), Some("0"));
+        assert!(c.download);
+        assert!(c.file_name.is_some());
+        assert_eq!(c.play_methods, vec!["download"]);
+        assert!(c.play_info.is_some());
+    }
+
+    #[test]
+    fn deserialize_challenge_web_docker_active() {
+        let json = include_str!("../../tests/fixtures/challenge-info-web-docker.json");
+        let result: ChallengeDetailResponse = serde_json::from_str(json).unwrap();
+        let c = &result.challenge;
+        assert_eq!(c.name, "TestChallenge-Web");
+        assert_eq!(c.category_name.as_deref(), Some("Web"));
+        assert_eq!(c.points.as_deref(), Some("0"));
+        assert!(!c.download);
+        assert!(c.file_name.is_none());
+        assert_eq!(c.play_methods, vec!["container"]);
+        let info = c.play_info.as_ref().unwrap();
+        assert_eq!(info.status.as_deref(), Some("ready"));
+        assert!(info.ip.is_some());
+        assert!(info.ports.is_some());
+        assert!(info.expires_at.is_some());
+    }
+
+    #[test]
+    fn deserialize_challenge_hybrid_docker_and_download() {
+        let json = include_str!("../../tests/fixtures/challenge-info-hybrid.json");
+        let result: ChallengeDetailResponse = serde_json::from_str(json).unwrap();
+        let c = &result.challenge;
+        assert_eq!(c.name, "TestChallenge-Hybrid");
+        assert!(c.download);
+        assert!(c.file_name.is_some());
+        assert!(c.play_methods.contains(&"download".to_string()));
+        assert!(c.play_methods.contains(&"container".to_string()));
     }
 }
