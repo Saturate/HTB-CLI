@@ -1,6 +1,6 @@
-# Agent Guide
+# HTB-CLI
 
-Instructions for AI agents (Claude Code, Copilot, Cursor, etc.) working on this codebase.
+Rust CLI for [Hack The Box](https://hackthebox.com). Instructions for AI agents (Claude Code, Copilot, Cursor, etc.) working on this codebase.
 
 ## Build and test
 
