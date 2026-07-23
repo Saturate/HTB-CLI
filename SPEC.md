@@ -339,8 +339,157 @@ Token stored separately at `~/.htb-cli/.token` (plaintext, 0o600 permissions).
 
 ## Open Questions
 
-1. Should `htb machines list` show paginated results or fetch all? The API supports `machine/paginated?per_page=100` but also non-paginated endpoints.
-2. VPN connect/disconnect (managing the OpenVPN process) needs root/sudo on most systems. Should this shell out to `openvpn` or use a helper approach?
-3. Should we support shell completions generation (`htb completions bash/zsh/fish`)?
-4. The API base URL might differ between `www.hackthebox.com/api/v4` and `labs.hackthebox.com/api/v4`. Need to confirm which is current from your browser calls.
-5. Are there any season-specific endpoints you use that aren't covered above?
+1. VPN connect/disconnect (managing the OpenVPN process) needs root/sudo on most systems. Should this shell out to `openvpn` or use a helper approach?
+2. Should we support shell completions generation (`htb completions bash/zsh/fish`)?
+
+---
+
+# Feature Spec: HTTP Response Caching
+
+## Objective
+
+Reduce redundant API calls and speed up repeated CLI commands. A user running `htb machines info Bedside` then `htb machines start Bedside` hits the profile endpoint twice. With caching, the second call reads from disk.
+
+The HTB API sends `cache-control: no-cache, private` on all endpoints with no ETags or Last-Modified. The frontend does no client-side caching either (no localStorage, no IndexedDB, no Pinia persistence). So this is purely client-side TTL caching. Evaluated `http-cache-reqwest`, `cacache`, and `moka` crates; none fit (RFC-compliant caching fights `no-cache` headers, and in-memory caches don't survive CLI process exits).
+
+## Design
+
+### Cache location
+
+`~/.htb-cli/cache/` (follows existing `~/.htb-cli/` convention).
+
+### Cache key
+
+Sanitized URL path as filename. Strip the base URL, replace `/` with `_`, drop query string `?` and `&` to `_`. Example: `/api/v4/machine/profile/Bedside` becomes `api_v4_machine_profile_Bedside.json`. This makes files debuggable with `ls` and enables glob-based prefix invalidation.
+
+### Cache entry format
+
+```json
+{
+  "cached_at": 1784657660,
+  "body": "..."
+}
+```
+
+`body` stores the raw JSON response string. Deserialization happens after cache lookup, same as a live response.
+
+### TTL tiers
+
+| Endpoint pattern | TTL | Rationale |
+|---|---|---|
+| `/machine/profile/*`, `/challenge/info/*`, `/sherlocks/*` | 2 min | Profile data changes rarely within a session |
+| `/machines?*`, `/challenges?*`, `/sherlocks?*` (list endpoints) | 5 min | Lists change infrequently |
+| `/challenge/categories/list`, `/sherlocks/categories/list`, `/season/list`, `/tags/list` | 30 min | Reference data |
+| `/user/info`, `/user/profile/*` | 2 min | Points/rank can change after submissions |
+| Everything else | not cached | Active VM status, VPN, search, connections |
+
+No user-configurable TTL override. The tiers are hardcoded; `--no-cache` and `cache.enabled = false` are sufficient controls.
+
+### What is never cached
+
+- POST requests (mutations: spawn, terminate, submit flag, etc.)
+- `/virtual_machine/active` (must reflect real-time state)
+- `/connection/status`, `/connections` (VPN state)
+- `/search/*` (query-dependent, low repeat rate)
+- Download URLs and binary responses
+
+### Cache invalidation
+
+- **TTL expiry**: stale entries are re-fetched and overwritten.
+- **After mutations**: POST requests to machine/challenge endpoints clear related cache entries by glob prefix. `vm/spawn`, `vm/terminate`, `vm/reset` clear `api_v*_machine*` and `api_v*_machines*` (both profile and list). Challenge start/stop clears `api_v*_challenge*`.
+- **Manual**: `htb cache clear` command wipes `~/.htb-cli/cache/`.
+- **Auth change**: `htb auth login` and `htb auth logout` clear the cache directory.
+
+### Disk cleanup
+
+Lazy sweep: on every Nth cache write (e.g. every 10th), scan the cache directory and delete files with `cached_at` older than 1 hour. This handles long-lived MCP server sessions where the constructor sweep won't re-run.
+
+### Atomicity and error handling
+
+- **Atomic writes**: write to a tempfile in the cache directory, then `rename` into place. Prevents concurrent CLI invocations from reading half-written JSON.
+- **Corrupt files**: if a cache file fails to parse, treat as a cache miss and delete the file.
+- **Cache dir failure**: if `~/.htb-cli/cache/` can't be created (permissions, read-only FS), degrade to no-cache silently (log at debug level).
+- **File permissions**: cache files get `0o600` on Unix, same as the token file.
+- **Clock skew**: treat `cached_at` in the future as expired.
+
+### Configuration
+
+Add to `~/.htb-cli/config.toml`:
+
+```toml
+[cache]
+enabled = true     # default: true
+```
+
+A `--no-cache` global CLI flag bypasses cache for a single invocation.
+
+## Implementation
+
+### New module: `src/cache.rs`
+
+```rust
+pub struct Cache {
+    dir: PathBuf,
+    enabled: bool,
+    write_count: AtomicU32,
+}
+
+impl Cache {
+    pub fn new(dir: PathBuf, enabled: bool) -> Self;
+    pub fn get(&self, url: &str, max_age: Duration) -> Option<String>;
+    pub fn set(&self, url: &str, body: &str);
+    pub fn invalidate_pattern(&self, glob: &str);
+    pub fn clear(&self);
+}
+```
+
+Constructor takes a `PathBuf` so tests can pass a temp directory. All methods are infallible from the caller's perspective; errors log at debug and degrade to no-cache.
+
+### Integration into HtbClient
+
+Add a private `get_raw(&self, path: &str, max_age: Duration) -> Result<String>` method that checks cache before HTTP. The existing `get<T: DeserializeOwned>` delegates to `get_raw` then deserializes. No signature change to public API; all `src/api/*.rs` call sites remain unchanged.
+
+`HtbClient` gains an `Option<Cache>` field. `None` means caching is disabled. A `ttl_for_path(path: &str) -> Option<Duration>` helper maps URL patterns to TTL tiers; returns `None` for uncached endpoints.
+
+POST methods call `cache.invalidate_pattern()` after successful responses.
+
+### Test constructor
+
+Add `HtbClient::with_cache(token, base_url, cache)` for tests, following the existing `with_base_url` pattern.
+
+### Files changed
+
+```
+src/cache.rs          # new: Cache struct, ~100 lines
+src/api/mod.rs        # add get_raw, Option<Cache> field, ttl_for_path
+src/cli/mod.rs        # add --no-cache flag, cache clear subcommand
+src/cli/cache.rs      # new: cache subcommand handler
+src/config.rs         # add CacheConfig
+src/cli/auth.rs       # clear cache on login/logout
+```
+
+No new dependencies.
+
+## Testing Strategy
+
+- Unit tests for `Cache` in isolation using `tempfile::tempdir()` (already a transitive dep)
+- Test TTL expiry by writing entries with `cached_at` in the past, not by sleeping
+- Test atomic writes by verifying cache files are either absent or valid JSON
+- Test corrupt file recovery by writing invalid JSON to a cache file
+- Existing tests pass unchanged (cache is transparent; test clients use `with_base_url` which has no cache)
+
+## Boundaries
+
+- **Always**: respect `--no-cache` flag, never cache POST responses, atomic writes
+- **Ask first**: changing default TTL values, adding new cached endpoints
+- **Never**: cache auth tokens, serve stale data for active VM state
+
+## Success Criteria
+
+- `htb machines info X && htb machines start X` makes one profile HTTP request, not two
+- `htb machines list` repeated within 5 minutes serves from cache
+- `htb cache clear` removes all cached data
+- `--no-cache` bypasses cache completely
+- Spawning a machine invalidates both profile and list caches
+- No behavioral change for mutating commands
+- All existing tests pass without modification

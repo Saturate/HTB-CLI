@@ -1,25 +1,11 @@
-pub mod api;
-pub mod cli;
-pub mod config;
-pub mod error;
-pub mod mcp;
-pub mod models;
-pub mod output;
-
-use std::path::Path;
-
 use clap::Parser;
 use tracing_subscriber::EnvFilter;
 
-pub fn sanitize_filename(raw: &str, fallback: &str) -> String {
-    Path::new(raw)
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| fallback.to_string())
-}
-
-use cli::{Cli, Command};
-use output::OutputFormat;
+use htb_cli::cache;
+use htb_cli::cli::{self, Cli, Command};
+use htb_cli::config;
+use htb_cli::mcp;
+use htb_cli::output::OutputFormat;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -72,54 +58,68 @@ async fn main() {
         unsafe { std::env::set_var("NO_COLOR", "1") };
     }
 
-    if let Err(e) = run(cli.command, format).await {
+    let cache_enabled = cfg.cache.enabled && !cli.no_cache;
+    let app_cache = std::sync::Arc::new(cache::Cache::new(config::cache_dir(), cache_enabled));
+
+    if let Err(e) = run(cli.command, format, app_cache).await {
         eprintln!("Error: {e}");
         std::process::exit(1);
     }
 }
 
-async fn run(command: Command, format: OutputFormat) -> anyhow::Result<()> {
+async fn run(
+    command: Command,
+    format: OutputFormat,
+    app_cache: std::sync::Arc<cache::Cache>,
+) -> anyhow::Result<()> {
     match command {
-        Command::Auth { command } => cli::auth::handle(command, format).await,
+        Command::Auth { command } => cli::auth::handle(command, format, &app_cache).await,
 
         Command::Machines { command } => {
-            let client = authenticated_client()?;
+            let client = authenticated_client(app_cache)?;
             cli::machines::handle(&client, command, format).await
         }
 
         Command::Challenges { command } => {
-            let client = authenticated_client()?;
+            let client = authenticated_client(app_cache)?;
             cli::challenges::handle(&client, command, format).await
         }
 
         Command::Seasons { command } => {
-            let client = authenticated_client()?;
+            let client = authenticated_client(app_cache)?;
             cli::seasons::handle(&client, command, format).await
         }
 
         Command::Sherlocks { command } => {
-            let client = authenticated_client()?;
+            let client = authenticated_client(app_cache)?;
             cli::sherlocks::handle(&client, command, format).await
         }
 
         Command::Vpn { command } => {
-            let client = authenticated_client()?;
+            let client = authenticated_client(app_cache)?;
             cli::vpn::handle(&client, command, format).await
         }
 
         Command::User { command } => {
-            let client = authenticated_client()?;
+            let client = authenticated_client(app_cache)?;
             cli::user::handle(&client, command, format).await
         }
 
         Command::Search { query } => {
-            let client = authenticated_client()?;
+            let client = authenticated_client(app_cache)?;
             cli::search::handle(&client, &query).await
+        }
+
+        Command::Cache { command } => {
+            cli::cache::handle(command, &app_cache);
+            Ok(())
         }
     }
 }
 
-fn authenticated_client() -> anyhow::Result<api::HtbClient> {
+fn authenticated_client(
+    cache: std::sync::Arc<cache::Cache>,
+) -> anyhow::Result<htb_cli::api::HtbClient> {
     let token = config::read_token()?;
-    Ok(api::HtbClient::new(token))
+    Ok(htb_cli::api::HtbClient::with_cache_arc(token, cache))
 }
