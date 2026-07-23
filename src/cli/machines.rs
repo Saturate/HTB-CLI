@@ -123,6 +123,7 @@ pub async fn handle(
                     result.meta.current_page,
                     result.meta.last_page,
                     result.meta.total,
+                    format,
                 );
             }
         }

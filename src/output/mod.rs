@@ -34,7 +34,10 @@ pub fn print_message(msg: &str) {
     println!("{msg}");
 }
 
-pub fn print_pagination(current: u32, total_pages: u32, total_items: u32) {
+pub fn print_pagination(current: u32, total_pages: u32, total_items: u32, format: OutputFormat) {
+    if format == OutputFormat::Json {
+        return;
+    }
     if total_pages > 1 {
         println!("Page {current} of {total_pages} ({total_items} total)");
     }
