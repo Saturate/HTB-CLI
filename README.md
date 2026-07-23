@@ -108,6 +108,22 @@ htb machines list --json
 htb auth status --json
 ```
 
+Pipe through [jq](https://jqlang.org) to filter, slice, or reshape:
+
+```bash
+# Easy Linux machines you haven't completed
+htb machines list --json | jq '[.[] | select(.os == "Linux" and .difficulty == "Easy" and .user_owned == false)]'
+
+# Names of ongoing CTF events
+htb ctf events --json | jq '[.[] | select(.status == "Ongoing")] | .[].name'
+
+# Challenge IDs you haven't solved yet
+htb ctf challenges 1434 --json | jq '[.[] | select(.solved == false)] | .[].id'
+
+# Your current rank
+htb seasons rank --json | jq '.rank'
+```
+
 ## MCP Server
 
 Run as an [MCP](https://modelcontextprotocol.io) server for AI agent integration:

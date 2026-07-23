@@ -274,17 +274,19 @@ async fn challenges(
         });
     }
 
-    if let Some(team) = &data.participating_team {
-        crate::output::print_message(&format!(
-            "Team: {} | Rank: {} | Solved: {}/{} | Points: {}",
-            team.name,
-            team.rank
-                .map(|r| r.to_string())
-                .unwrap_or_else(|| "-".into()),
-            team.solved_challenges.unwrap_or(0),
-            team.total_challenges.unwrap_or(0),
-            team.points.unwrap_or(0),
-        ));
+    if format != OutputFormat::Json {
+        if let Some(team) = &data.participating_team {
+            crate::output::print_message(&format!(
+                "Team: {} | Rank: {} | Solved: {}/{} | Points: {}",
+                team.name,
+                team.rank
+                    .map(|r| r.to_string())
+                    .unwrap_or_else(|| "-".into()),
+                team.solved_challenges.unwrap_or(0),
+                team.total_challenges.unwrap_or(0),
+                team.points.unwrap_or(0),
+            ));
+        }
     }
 
     crate::output::print_list(&challenges, format);
@@ -393,17 +395,19 @@ async fn scoreboard(event_id: u64, format: OutputFormat, cache: &Arc<Cache>) -> 
 
     let sb = client.ctf().scoreboard(event_id).await?;
 
-    if let Some(team) = &sb.participating_team {
-        crate::output::print_message(&format!(
-            "Your team: {} | Rank: {} | Points: {} | Flags: {} | Bloods: {}",
-            team.name,
-            team.position
-                .map(|p| p.to_string())
-                .unwrap_or_else(|| "-".into()),
-            team.points.unwrap_or(0),
-            team.owned_flags.unwrap_or(0),
-            team.first_bloods.unwrap_or(0),
-        ));
+    if format != OutputFormat::Json {
+        if let Some(team) = &sb.participating_team {
+            crate::output::print_message(&format!(
+                "Your team: {} | Rank: {} | Points: {} | Flags: {} | Bloods: {}",
+                team.name,
+                team.position
+                    .map(|p| p.to_string())
+                    .unwrap_or_else(|| "-".into()),
+                team.points.unwrap_or(0),
+                team.owned_flags.unwrap_or(0),
+                team.first_bloods.unwrap_or(0),
+            ));
+        }
     }
 
     // Add rank numbers to the score table
