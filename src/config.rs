@@ -130,6 +130,57 @@ pub fn remove_token() -> anyhow::Result<()> {
     Ok(())
 }
 
+pub fn ctf_token_path() -> Result<PathBuf, crate::error::HtbError> {
+    Ok(config_dir()?.join(".ctf-token"))
+}
+
+pub fn read_ctf_token() -> Result<String, crate::error::HtbError> {
+    let path = ctf_token_path()?;
+    if !path.exists() {
+        return Err(crate::error::HtbError::NotAuthenticated);
+    }
+    let token = fs::read_to_string(&path)?.trim().to_string();
+    if token.is_empty() {
+        return Err(crate::error::HtbError::NotAuthenticated);
+    }
+    Ok(token)
+}
+
+pub fn save_ctf_token(token: &str) -> anyhow::Result<()> {
+    let dir = config_dir()?;
+    fs::create_dir_all(&dir)?;
+
+    let path = ctf_token_path()?;
+
+    #[cfg(unix)]
+    {
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        let mut f = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(&path)?;
+        f.write_all(token.as_bytes())?;
+    }
+
+    #[cfg(not(unix))]
+    {
+        fs::write(&path, token)?;
+    }
+
+    Ok(())
+}
+
+pub fn remove_ctf_token() -> anyhow::Result<()> {
+    let path = ctf_token_path()?;
+    if path.exists() {
+        fs::remove_file(&path)?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -183,5 +234,18 @@ mod tests {
         assert_eq!(read_back.trim(), "test-token-123");
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn ctf_token_path_ends_with_ctf_token() {
+        let path = ctf_token_path().unwrap();
+        assert!(path.ends_with(".ctf-token"));
+    }
+
+    #[test]
+    fn ctf_token_path_differs_from_labs_token() {
+        let labs = token_path().unwrap();
+        let ctf = ctf_token_path().unwrap();
+        assert_ne!(labs, ctf);
     }
 }

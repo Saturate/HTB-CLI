@@ -105,6 +105,10 @@ async fn run(
             cli::user::handle(&client, command, format).await
         }
 
+        Command::Ctf { command: _ } => {
+            anyhow::bail!("CTF support not yet implemented");
+        }
+
         Command::Search { query } => {
             let client = authenticated_client(app_cache)?;
             cli::search::handle(&client, &query).await

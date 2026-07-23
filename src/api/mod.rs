@@ -173,6 +173,49 @@ impl HtbClient {
         Ok(result)
     }
 
+    pub async fn post_no_content<B: Serialize>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<(), HtbError> {
+        self.wait_for_rate_limit().await;
+
+        let url = format!("{}{}", self.base_url, path);
+        tracing::debug!(url = %url, "POST (no content)");
+
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(&self.token)
+            .json(body)
+            .send()
+            .await?;
+
+        self.rate_limit.update(resp.headers());
+        self.log_rate_limit();
+
+        let status = resp.status();
+        if status == 401 {
+            return Err(HtbError::NotAuthenticated);
+        }
+        if status == 429 {
+            return Err(HtbError::RateLimited);
+        }
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            let message = serde_json::from_str::<ApiErrorBody>(&body)
+                .map(|e| e.message)
+                .unwrap_or(body);
+            return Err(HtbError::Api {
+                status: status.as_u16(),
+                message,
+            });
+        }
+
+        self.invalidate_after_post(path);
+        Ok(())
+    }
+
     fn invalidate_after_post(&self, path: &str) {
         let Some(cache) = &self.cache else { return };
         if path.contains("/vm/spawn")
