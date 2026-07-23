@@ -28,6 +28,13 @@ pub enum CtfCommand {
         /// Event slug (e.g. ctf-try-out-1434)
         slug: String,
     },
+    /// List challenges in a CTF event
+    Challenges {
+        /// Event ID
+        event_id: u64,
+        #[arg(long, help = "Filter by difficulty")]
+        difficulty: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -49,6 +56,10 @@ pub async fn handle(
         CtfCommand::Auth { command } => handle_auth(command, format, cache).await,
         CtfCommand::Events { all } => events(all, format, cache).await,
         CtfCommand::Info { slug } => info(&slug, format, cache).await,
+        CtfCommand::Challenges {
+            event_id,
+            difficulty,
+        } => challenges(event_id, difficulty.as_deref(), format, cache).await,
     }
 }
 
@@ -185,5 +196,39 @@ async fn info(slug: &str, format: OutputFormat, cache: &Arc<Cache>) -> anyhow::R
     ];
 
     crate::output::print_detail(&detail, format, &fields);
+    Ok(())
+}
+
+async fn challenges(
+    event_id: u64,
+    difficulty: Option<&str>,
+    format: OutputFormat,
+    cache: &Arc<Cache>,
+) -> anyhow::Result<()> {
+    let client = ctf_client(cache)?;
+    let data = client.ctf().event_data(event_id).await?;
+
+    let mut challenges = data.challenges;
+
+    if let Some(diff_filter) = difficulty {
+        challenges.retain(|c| {
+            c.difficulty
+                .as_deref()
+                .is_some_and(|d| d.eq_ignore_ascii_case(diff_filter))
+        });
+    }
+
+    if let Some(team) = &data.participating_team {
+        crate::output::print_message(&format!(
+            "Team: {} | Rank: {} | Solved: {}/{} | Points: {}",
+            team.name,
+            team.rank.map(|r| r.to_string()).unwrap_or_else(|| "-".into()),
+            team.solved_challenges.unwrap_or(0),
+            team.total_challenges.unwrap_or(0),
+            team.points.unwrap_or(0),
+        ));
+    }
+
+    crate::output::print_list(&challenges, format);
     Ok(())
 }

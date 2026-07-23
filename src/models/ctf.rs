@@ -121,6 +121,119 @@ pub struct CtfEventDetail {
     pub ai_usage_policy: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CtfEventData {
+    pub id: u64,
+    pub name: String,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub hide_scoreboard: u32,
+    #[serde(default)]
+    pub participating_team: Option<CtfParticipatingTeam>,
+    #[serde(default)]
+    pub challenges: Vec<CtfChallenge>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CtfParticipatingTeam {
+    pub id: u64,
+    pub name: String,
+    #[serde(default)]
+    pub points: Option<u32>,
+    #[serde(default)]
+    pub solved_challenges: Option<u32>,
+    #[serde(default)]
+    pub total_challenges: Option<u32>,
+    #[serde(default)]
+    pub owned_flags: Option<u32>,
+    #[serde(default)]
+    pub total_flags: Option<u32>,
+    #[serde(default)]
+    pub rank: Option<u32>,
+    #[serde(default, rename = "isCaptain")]
+    pub is_captain: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct CtfChallenge {
+    pub id: u64,
+    pub name: String,
+    #[serde(default)]
+    pub creator: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub challenge_category_id: Option<u64>,
+    #[serde(default)]
+    pub difficulty: Option<String>,
+    #[serde(default)]
+    pub filename: Option<String>,
+    #[serde(default, rename = "hasDocker")]
+    pub has_docker: Option<u32>,
+    #[serde(default)]
+    pub docker_online: Option<String>,
+    #[serde(default)]
+    pub docker_ports: Option<String>,
+    #[serde(default)]
+    pub points: Option<u32>,
+    #[serde(default)]
+    pub solves: Option<u32>,
+    #[serde(default)]
+    pub solved: bool,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default, rename = "flagsInfo")]
+    pub flags_info: Vec<CtfFlagInfo>,
+}
+
+impl Tabular for CtfChallenge {
+    fn headers() -> Vec<&'static str> {
+        vec![
+            "ID", "Name", "Difficulty", "Points", "Solves", "Docker", "Download", "Flags", "Solved",
+        ]
+    }
+
+    fn row(&self) -> Vec<String> {
+        vec![
+            self.id.to_string(),
+            self.name.clone(),
+            self.difficulty.clone().unwrap_or_default(),
+            self.points.map(|p| p.to_string()).unwrap_or_default(),
+            self.solves.map(|s| s.to_string()).unwrap_or_default(),
+            if self.has_docker.unwrap_or(0) > 0 {
+                "Yes"
+            } else {
+                ""
+            }
+            .to_string(),
+            if self.filename.is_some() { "Yes" } else { "" }.to_string(),
+            self.flags_info.len().to_string(),
+            if self.solved { "Yes" } else { "" }.to_string(),
+        ]
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct CtfFlagInfo {
+    pub flag_id: u64,
+    #[serde(default)]
+    pub identifier: Option<String>,
+    #[serde(default)]
+    pub question: Option<String>,
+    #[serde(default)]
+    pub solved: bool,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CtfMenu {
+    pub id: u64,
+    #[serde(default, rename = "userCanViewScoreboard")]
+    pub user_can_view_scoreboard: Option<u32>,
+    #[serde(default)]
+    pub status: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -188,6 +301,57 @@ mod tests {
         assert_eq!(detail.players_joined, Some(1200));
         assert_eq!(detail.teams_joined, Some(300));
         assert_eq!(detail.challenges, Some(50));
+    }
+
+    #[test]
+    fn deserialize_ctf_event_data_with_challenges() {
+        let json = r#"{
+            "id": 1434,
+            "name": "CTF Try Out",
+            "status": "Ongoing",
+            "hide_scoreboard": 0,
+            "participating_team": {
+                "id": 321013,
+                "name": "v1olet",
+                "points": 5000,
+                "solved_challenges": 10,
+                "total_challenges": 50,
+                "owned_flags": 10,
+                "total_flags": 60,
+                "rank": 42,
+                "isCaptain": false
+            },
+            "challenges": [{
+                "id": 31855,
+                "name": "Test Challenge",
+                "creator": "author",
+                "description": "A test",
+                "challenge_category_id": 2,
+                "difficulty": "Easy",
+                "filename": "test.zip",
+                "hasDocker": 1,
+                "docker_online": null,
+                "docker_ports": null,
+                "points": 500,
+                "solves": 42,
+                "solved": true,
+                "status": "in progress",
+                "flagsInfo": [
+                    {"flag_id": 1, "identifier": null, "question": null, "solved": true}
+                ],
+                "machine": null,
+                "team_solves": []
+            }]
+        }"#;
+        let data: CtfEventData = serde_json::from_str(json).unwrap();
+        assert_eq!(data.id, 1434);
+        assert_eq!(data.challenges.len(), 1);
+        assert_eq!(data.challenges[0].name, "Test Challenge");
+        assert!(data.challenges[0].solved);
+        assert_eq!(data.challenges[0].flags_info.len(), 1);
+        let team = data.participating_team.unwrap();
+        assert_eq!(team.rank, Some(42));
+        assert_eq!(team.points, Some(5000));
     }
 
     #[test]

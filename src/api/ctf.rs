@@ -1,5 +1,5 @@
 use crate::error::HtbError;
-use crate::models::ctf::{CtfEvent, CtfEventDetail, CtfUserProfile};
+use crate::models::ctf::{CtfEvent, CtfEventData, CtfEventDetail, CtfMenu, CtfUserProfile};
 
 use super::HtbClient;
 
@@ -19,5 +19,13 @@ impl CtfApi<'_> {
         self.0
             .get(&format!("/api/ctfs/details/{encoded}"))
             .await
+    }
+
+    pub async fn event_data(&self, event_id: u64) -> Result<CtfEventData, HtbError> {
+        self.0.get(&format!("/api/ctfs/{event_id}")).await
+    }
+
+    pub async fn menu(&self, event_id: u64) -> Result<CtfMenu, HtbError> {
+        self.0.get(&format!("/api/ctfs/{event_id}/menu")).await
     }
 }
