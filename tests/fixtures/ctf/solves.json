@@ -1,0 +1,24 @@
+[
+  {
+    "challenge_name": "LootStash",
+    "challenge_category": "Reversing",
+    "identifier": null,
+    "flag_question": null,
+    "team_id": 321013,
+    "team_name": "v1olet",
+    "team_deleted": false,
+    "user_name": "LANGSOMT",
+    "created_at": "2026-07-22T11:12:05.000000Z"
+  },
+  {
+    "challenge_name": "An unusual sighting",
+    "challenge_category": "Forensics",
+    "identifier": null,
+    "flag_question": null,
+    "team_id": 318077,
+    "team_name": "Whole Milk Gang",
+    "team_deleted": false,
+    "user_name": "TommyAlmonds",
+    "created_at": "2026-07-22T10:05:00.000000Z"
+  }
+]

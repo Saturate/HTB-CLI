@@ -104,10 +104,7 @@ pub async fn handle(
             event_id,
             difficulty,
         } => challenges(event_id, difficulty.as_deref(), format, cache).await,
-        CtfCommand::Submit {
-            challenge_id,
-            flag,
-        } => submit(challenge_id, &flag, cache).await,
+        CtfCommand::Submit { challenge_id, flag } => submit(challenge_id, &flag, cache).await,
         CtfCommand::Download {
             event_id,
             challenge_id,
@@ -221,10 +218,7 @@ async fn info(slug: &str, format: OutputFormat, cache: &Arc<Cache>) -> anyhow::R
         ("Format", detail.format.clone().unwrap_or_default()),
         ("Type", detail.event_type.clone().unwrap_or_default()),
         ("Location", detail.location.clone().unwrap_or_default()),
-        (
-            "Start",
-            detail.start_date.clone().unwrap_or_default(),
-        ),
+        ("Start", detail.start_date.clone().unwrap_or_default()),
         ("End", detail.end_date.clone().unwrap_or_default()),
         (
             "Players",
@@ -242,10 +236,7 @@ async fn info(slug: &str, format: OutputFormat, cache: &Arc<Cache>) -> anyhow::R
         ),
         (
             "Challenges",
-            detail
-                .challenges
-                .map(|c| c.to_string())
-                .unwrap_or_default(),
+            detail.challenges.map(|c| c.to_string()).unwrap_or_default(),
         ),
         (
             "Max Team Size",
@@ -287,7 +278,9 @@ async fn challenges(
         crate::output::print_message(&format!(
             "Team: {} | Rank: {} | Solved: {}/{} | Points: {}",
             team.name,
-            team.rank.map(|r| r.to_string()).unwrap_or_else(|| "-".into()),
+            team.rank
+                .map(|r| r.to_string())
+                .unwrap_or_else(|| "-".into()),
             team.solved_challenges.unwrap_or(0),
             team.total_challenges.unwrap_or(0),
             team.points.unwrap_or(0),
@@ -309,11 +302,7 @@ async fn submit(challenge_id: u64, flag: &str, cache: &Arc<Cache>) -> anyhow::Re
     Ok(())
 }
 
-async fn download(
-    event_id: u64,
-    challenge_id: u64,
-    cache: &Arc<Cache>,
-) -> anyhow::Result<()> {
+async fn download(event_id: u64, challenge_id: u64, cache: &Arc<Cache>) -> anyhow::Result<()> {
     let client = ctf_client(cache)?;
 
     let data = client.ctf().event_data(event_id).await?;
@@ -335,11 +324,7 @@ async fn download(
     Ok(())
 }
 
-async fn start(
-    event_id: u64,
-    challenge_id: u64,
-    cache: &Arc<Cache>,
-) -> anyhow::Result<()> {
+async fn start(event_id: u64, challenge_id: u64, cache: &Arc<Cache>) -> anyhow::Result<()> {
     let client = ctf_client(cache)?;
 
     let data = client.ctf().event_data(event_id).await?;
@@ -377,11 +362,7 @@ async fn start(
     Ok(())
 }
 
-async fn stop(
-    event_id: u64,
-    challenge_id: u64,
-    cache: &Arc<Cache>,
-) -> anyhow::Result<()> {
+async fn stop(event_id: u64, challenge_id: u64, cache: &Arc<Cache>) -> anyhow::Result<()> {
     let client = ctf_client(cache)?;
 
     let data = client.ctf().event_data(event_id).await?;
@@ -400,11 +381,7 @@ async fn stop(
     Ok(())
 }
 
-async fn scoreboard(
-    event_id: u64,
-    format: OutputFormat,
-    cache: &Arc<Cache>,
-) -> anyhow::Result<()> {
+async fn scoreboard(event_id: u64, format: OutputFormat, cache: &Arc<Cache>) -> anyhow::Result<()> {
     let client = ctf_client(cache)?;
 
     let menu = client.ctf().menu(event_id).await?;
@@ -418,7 +395,9 @@ async fn scoreboard(
         crate::output::print_message(&format!(
             "Your team: {} | Rank: {} | Points: {} | Flags: {} | Bloods: {}",
             team.name,
-            team.position.map(|p| p.to_string()).unwrap_or_else(|| "-".into()),
+            team.position
+                .map(|p| p.to_string())
+                .unwrap_or_else(|| "-".into()),
             team.points.unwrap_or(0),
             team.owned_flags.unwrap_or(0),
             team.first_bloods.unwrap_or(0),
@@ -474,11 +453,7 @@ impl crate::output::Tabular for RankedScore<'_> {
     }
 }
 
-async fn solves(
-    event_id: u64,
-    format: OutputFormat,
-    cache: &Arc<Cache>,
-) -> anyhow::Result<()> {
+async fn solves(event_id: u64, format: OutputFormat, cache: &Arc<Cache>) -> anyhow::Result<()> {
     let client = ctf_client(cache)?;
     let solves = client.ctf().solves(event_id).await?;
     crate::output::print_list(&solves, format);

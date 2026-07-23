@@ -1,0 +1,20 @@
+{
+  "id": 1434,
+  "name": "CTF Try Out",
+  "slug": "ctf-try-out-1434",
+  "status": "Ongoing",
+  "startDate": "01 Jan 2026, 00:00 AM UTC",
+  "endDate": "31 Dec 2026, 12:00 PM UTC",
+  "description": "<p>A practice CTF for teams to warm up.</p>",
+  "type": "Public",
+  "format": "Jeopardy",
+  "location": "Online",
+  "playersJoined": 1200,
+  "teamsJoined": 300,
+  "challenges": 50,
+  "challengeCategories": 10,
+  "maxTeamSize": 5,
+  "prizePool": null,
+  "featured": false,
+  "ai_usage_policy": null
+}

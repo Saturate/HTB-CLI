@@ -1,0 +1,13 @@
+{
+  "id": 1084837,
+  "name": "LANGSOMT",
+  "full_name": "Test User",
+  "contact_info": "https://example.com",
+  "email": "test@example.com",
+  "timezone": "Europe/London",
+  "joined_ctfs_with_team": [{"ctf_id": 1434, "team_id": 321013}],
+  "hasAnyTeam": true,
+  "hasNormalTeam": true,
+  "avatar": null,
+  "device_id": "test-device"
+}

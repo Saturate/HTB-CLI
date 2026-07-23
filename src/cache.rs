@@ -277,9 +277,18 @@ mod tests {
 
         cache.invalidate_pattern("api_v4_machine");
 
-        assert!(cache.get(url1, Duration::from_secs(300)).is_none(), "url1 should be invalidated");
-        assert!(cache.get(url2, Duration::from_secs(300)).is_none(), "url2 should be invalidated");
-        assert!(cache.get(url3, Duration::from_secs(300)).is_some(), "url3 should survive");
+        assert!(
+            cache.get(url1, Duration::from_secs(300)).is_none(),
+            "url1 should be invalidated"
+        );
+        assert!(
+            cache.get(url2, Duration::from_secs(300)).is_none(),
+            "url2 should be invalidated"
+        );
+        assert!(
+            cache.get(url3, Duration::from_secs(300)).is_some(),
+            "url3 should survive"
+        );
     }
 
     #[test]

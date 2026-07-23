@@ -63,7 +63,15 @@ pub struct CtfEvent {
 
 impl Tabular for CtfEvent {
     fn headers() -> Vec<&'static str> {
-        vec!["ID", "Name", "Status", "Format", "Players", "Team Size", "Joined"]
+        vec![
+            "ID",
+            "Name",
+            "Status",
+            "Format",
+            "Players",
+            "Team Size",
+            "Joined",
+        ]
     }
 
     fn row(&self) -> Vec<String> {
@@ -190,7 +198,15 @@ pub struct CtfChallenge {
 impl Tabular for CtfChallenge {
     fn headers() -> Vec<&'static str> {
         vec![
-            "ID", "Name", "Difficulty", "Points", "Solves", "Docker", "Download", "Flags", "Solved",
+            "ID",
+            "Name",
+            "Difficulty",
+            "Points",
+            "Solves",
+            "Docker",
+            "Download",
+            "Flags",
+            "Solved",
         ]
     }
 
@@ -373,6 +389,72 @@ pub struct CtfFlagResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn deserialize_ctf_events_fixture() {
+        let json = include_str!("../../tests/fixtures/ctf/events.json");
+        let events: Vec<CtfEvent> = serde_json::from_str(json).unwrap();
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].name, "CTF Try Out");
+        assert_eq!(events[0].has_joined, 1);
+        assert_eq!(events[1].status.as_deref(), Some("Upcoming"));
+    }
+
+    #[test]
+    fn deserialize_ctf_event_detail_fixture() {
+        let json = include_str!("../../tests/fixtures/ctf/event-detail.json");
+        let detail: CtfEventDetail = serde_json::from_str(json).unwrap();
+        assert_eq!(detail.id, 1434);
+        assert_eq!(detail.players_joined, Some(1200));
+        assert_eq!(detail.challenges, Some(50));
+    }
+
+    #[test]
+    fn deserialize_ctf_event_data_fixture() {
+        let json = include_str!("../../tests/fixtures/ctf/event-data.json");
+        let data: CtfEventData = serde_json::from_str(json).unwrap();
+        assert_eq!(data.challenges.len(), 2);
+        assert_eq!(data.challenges[0].name, "An unusual sighting");
+        assert!(data.challenges[0].solved);
+        assert!(!data.challenges[1].solved);
+        assert_eq!(data.challenges[1].has_docker, Some(1));
+        let team = data.participating_team.unwrap();
+        assert_eq!(team.rank, Some(42));
+    }
+
+    #[test]
+    fn deserialize_ctf_scoreboard_fixture() {
+        let json = include_str!("../../tests/fixtures/ctf/scoreboard.json");
+        let sb: CtfScoreboard = serde_json::from_str(json).unwrap();
+        assert_eq!(sb.scores.len(), 2);
+        assert_eq!(sb.scores[0].points, Some(15000));
+        let team = sb.participating_team.unwrap();
+        assert_eq!(team.position, Some(42));
+    }
+
+    #[test]
+    fn deserialize_ctf_solves_fixture() {
+        let json = include_str!("../../tests/fixtures/ctf/solves.json");
+        let solves: Vec<CtfSolve> = serde_json::from_str(json).unwrap();
+        assert_eq!(solves.len(), 2);
+        assert_eq!(solves[0].challenge_name.as_deref(), Some("LootStash"));
+    }
+
+    #[test]
+    fn deserialize_ctf_user_profile_fixture() {
+        let json = include_str!("../../tests/fixtures/ctf/user-profile.json");
+        let profile: CtfUserProfile = serde_json::from_str(json).unwrap();
+        assert_eq!(profile.name, "LANGSOMT");
+        assert!(profile.has_any_team);
+    }
+
+    #[test]
+    fn deserialize_ctf_menu_fixture() {
+        let json = include_str!("../../tests/fixtures/ctf/menu.json");
+        let menu: CtfMenu = serde_json::from_str(json).unwrap();
+        assert_eq!(menu.id, 1434);
+        assert_eq!(menu.user_can_view_scoreboard, Some(1));
+    }
 
     #[test]
     fn deserialize_ctf_event() {

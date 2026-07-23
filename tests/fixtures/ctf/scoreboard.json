@@ -1,0 +1,53 @@
+{
+  "ctf_id": 1434,
+  "ctf_name": "CTF Try Out",
+  "ends_at": "2026-12-31T12:00:00.000000Z",
+  "ctf_teams": 300,
+  "ctf_players": 1200,
+  "light_mode": false,
+  "view_analytics": false,
+  "is_ended": false,
+  "participating_team": {
+    "id": 321013,
+    "name": "v1olet",
+    "position": 42,
+    "solved_challenges": 10,
+    "total_challenges": 50,
+    "owned_flags": 12,
+    "first_bloods": 2,
+    "total_flags": 60,
+    "points": 5000,
+    "avatar": null,
+    "deleted": false
+  },
+  "scores": [
+    {
+      "id": 1,
+      "name": "Top Team",
+      "country_code": "US",
+      "country_name": "United States",
+      "points": 15000,
+      "avatar": null,
+      "owned_flags": 55,
+      "total_flags": 60,
+      "color": "#ff0000",
+      "latestOwn": 1784700000,
+      "deleted": false,
+      "first_bloods": 10
+    },
+    {
+      "id": 2,
+      "name": "Second Place",
+      "country_code": "DE",
+      "country_name": "Germany",
+      "points": 12000,
+      "avatar": null,
+      "owned_flags": 48,
+      "total_flags": 60,
+      "color": "#00ff00",
+      "latestOwn": 1784699000,
+      "deleted": false,
+      "first_bloods": 5
+    }
+  ]
+}

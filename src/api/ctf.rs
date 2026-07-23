@@ -22,9 +22,7 @@ impl CtfApi<'_> {
 
     pub async fn event_details(&self, slug: &str) -> Result<CtfEventDetail, HtbError> {
         let encoded = super::encode_path(slug);
-        self.0
-            .get(&format!("/api/ctfs/details/{encoded}"))
-            .await
+        self.0.get(&format!("/api/ctfs/details/{encoded}")).await
     }
 
     pub async fn event_data(&self, event_id: u64) -> Result<CtfEventData, HtbError> {
@@ -73,15 +71,11 @@ impl CtfApi<'_> {
     }
 
     pub async fn scoreboard(&self, event_id: u64) -> Result<CtfScoreboard, HtbError> {
-        self.0
-            .get(&format!("/api/ctfs/scores/{event_id}"))
-            .await
+        self.0.get(&format!("/api/ctfs/scores/{event_id}")).await
     }
 
     pub async fn solves(&self, event_id: u64) -> Result<Vec<CtfSolve>, HtbError> {
-        self.0
-            .get(&format!("/api/ctfs/solves/{event_id}"))
-            .await
+        self.0.get(&format!("/api/ctfs/solves/{event_id}")).await
     }
 
     pub async fn challenge_solves(

@@ -1,0 +1,73 @@
+{
+  "id": 1434,
+  "name": "CTF Try Out",
+  "status": "Ongoing",
+  "hide_scoreboard": 0,
+  "participating_team": {
+    "id": 321013,
+    "name": "v1olet",
+    "participating_members": 4,
+    "country_code": "DK",
+    "motto": null,
+    "avatar": null,
+    "points": 5000,
+    "solved_challenges": 10,
+    "total_challenges": 50,
+    "owned_flags": 12,
+    "total_flags": 60,
+    "rank": 42,
+    "vpn_server": null,
+    "isCaptain": false,
+    "is_host": false
+  },
+  "challenges": [
+    {
+      "id": 31855,
+      "name": "An unusual sighting",
+      "creator": "author1",
+      "description": "A forensics challenge",
+      "challenge_category_id": 8,
+      "difficulty": "Very Easy",
+      "filename": "sighting.zip",
+      "hasDocker": 0,
+      "docker_online": null,
+      "docker_ports": null,
+      "docker_instance_type": null,
+      "points": 725,
+      "solves": 100,
+      "hostname": null,
+      "new": 0,
+      "solved": true,
+      "status": null,
+      "flagsInfo": [
+        {"flag_id": 1, "identifier": null, "question": null, "solved": true}
+      ],
+      "machine": null,
+      "team_solves": []
+    },
+    {
+      "id": 40790,
+      "name": "NeoVault",
+      "creator": "author2",
+      "description": "A web challenge",
+      "challenge_category_id": 2,
+      "difficulty": "Easy",
+      "filename": null,
+      "hasDocker": 1,
+      "docker_online": null,
+      "docker_ports": null,
+      "docker_instance_type": "TCP",
+      "points": 500,
+      "solves": 42,
+      "hostname": null,
+      "new": 1,
+      "solved": false,
+      "status": "in progress",
+      "flagsInfo": [
+        {"flag_id": 2, "identifier": null, "question": null, "solved": false}
+      ],
+      "machine": null,
+      "team_solves": []
+    }
+  ]
+}
