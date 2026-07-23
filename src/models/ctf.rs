@@ -54,7 +54,7 @@ pub struct CtfEvent {
     #[serde(default)]
     pub org_name: Option<String>,
     #[serde(default, rename = "hasJoined")]
-    pub has_joined: u32,
+    pub has_joined: Option<u32>,
     #[serde(default, rename = "joinedTeam")]
     pub joined_team: Option<String>,
     #[serde(default, rename = "membersJoined")]
@@ -82,7 +82,7 @@ impl Tabular for CtfEvent {
             self.format.clone().unwrap_or_default(),
             self.players.map(|p| p.to_string()).unwrap_or_default(),
             self.team_size.map(|t| t.to_string()).unwrap_or_default(),
-            if self.has_joined > 0 {
+            if self.has_joined.unwrap_or(0) > 0 {
                 self.joined_team.clone().unwrap_or_else(|| "Yes".into())
             } else {
                 String::new()
@@ -136,7 +136,7 @@ pub struct CtfEventData {
     #[serde(default)]
     pub status: Option<String>,
     #[serde(default)]
-    pub hide_scoreboard: u32,
+    pub hide_scoreboard: Option<u32>,
     #[serde(default)]
     pub participating_team: Option<CtfParticipatingTeam>,
     #[serde(default)]
@@ -180,9 +180,11 @@ pub struct CtfChallenge {
     #[serde(default, rename = "hasDocker")]
     pub has_docker: Option<u32>,
     #[serde(default)]
-    pub docker_online: Option<String>,
+    pub docker_online: Option<u32>,
     #[serde(default)]
-    pub docker_ports: Option<String>,
+    pub docker_ports: Option<Vec<u32>>,
+    #[serde(default)]
+    pub hostname: Option<String>,
     #[serde(default)]
     pub points: Option<u32>,
     #[serde(default)]
@@ -396,7 +398,7 @@ mod tests {
         let events: Vec<CtfEvent> = serde_json::from_str(json).unwrap();
         assert_eq!(events.len(), 2);
         assert_eq!(events[0].name, "CTF Try Out");
-        assert_eq!(events[0].has_joined, 1);
+        assert_eq!(events[0].has_joined, Some(1));
         assert_eq!(events[1].status.as_deref(), Some("Upcoming"));
     }
 
@@ -414,12 +416,18 @@ mod tests {
         let json = include_str!("../../tests/fixtures/ctf/event-data.json");
         let data: CtfEventData = serde_json::from_str(json).unwrap();
         assert_eq!(data.challenges.len(), 2);
-        assert_eq!(data.challenges[0].name, "An unusual sighting");
+        assert_eq!(data.challenges[0].name, "Welcome to CTF");
         assert!(data.challenges[0].solved);
         assert!(!data.challenges[1].solved);
         assert_eq!(data.challenges[1].has_docker, Some(1));
+        assert_eq!(data.challenges[1].docker_online, Some(1));
+        assert_eq!(data.challenges[1].docker_ports, Some(vec![30417]));
+        assert_eq!(
+            data.challenges[1].hostname.as_deref(),
+            Some("154.57.164.83")
+        );
         let team = data.participating_team.unwrap();
-        assert_eq!(team.rank, Some(42));
+        assert_eq!(team.rank, Some(116));
     }
 
     #[test]
@@ -446,6 +454,18 @@ mod tests {
         let profile: CtfUserProfile = serde_json::from_str(json).unwrap();
         assert_eq!(profile.name, "LANGSOMT");
         assert!(profile.has_any_team);
+    }
+
+    #[test]
+    fn deserialize_ctf_challenge_solves_fixture() {
+        let json = include_str!("../../tests/fixtures/ctf/challenge-solves.json");
+        let solves: Vec<CtfChallengeSolve> = serde_json::from_str(json).unwrap();
+        assert_eq!(solves.len(), 2);
+        assert_eq!(solves[0].team_name.as_deref(), Some("The Shadowers"));
+        assert_eq!(
+            solves[1].user_of_latest_own.as_ref().unwrap().name,
+            "LANGSOMT"
+        );
     }
 
     #[test]
@@ -488,7 +508,7 @@ mod tests {
         assert_eq!(event.id, 1434);
         assert_eq!(event.name, "CTF Try Out");
         assert_eq!(event.status.as_deref(), Some("Ongoing"));
-        assert_eq!(event.has_joined, 1);
+        assert_eq!(event.has_joined, Some(1));
         assert_eq!(event.joined_team.as_deref(), Some("v1olet"));
     }
 

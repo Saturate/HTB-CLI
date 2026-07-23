@@ -346,12 +346,14 @@ async fn start(event_id: u64, challenge_id: u64, cache: &Arc<Cache>) -> anyhow::
         tokio::time::sleep(Duration::from_secs(2)).await;
         let poll = client.ctf().event_data(event_id).await?;
         if let Some(c) = poll.challenges.iter().find(|c| c.id == challenge_id) {
-            if let Some(ref addr) = c.docker_online {
-                let port_info = c.docker_ports.as_deref().unwrap_or("");
-                if port_info.is_empty() {
-                    crate::output::print_message(&format!("Ready: {addr}"));
+            if c.docker_online.unwrap_or(0) > 0 {
+                let host = c.hostname.as_deref().unwrap_or("unknown");
+                let ports = c.docker_ports.as_deref().unwrap_or(&[]);
+                if ports.is_empty() {
+                    crate::output::print_message(&format!("Ready: {host}"));
                 } else {
-                    crate::output::print_message(&format!("Ready: {addr}:{port_info}"));
+                    let port_str: Vec<_> = ports.iter().map(|p| p.to_string()).collect();
+                    crate::output::print_message(&format!("Ready: {host}:{}", port_str.join(",")));
                 }
                 return Ok(());
             }

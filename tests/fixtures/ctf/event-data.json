@@ -1,72 +1,105 @@
 {
   "id": 1434,
   "name": "CTF Try Out",
+  "org_name": "HTB Cooks",
+  "workshop": false,
+  "team_size": 5,
+  "starts_at": "2024-01-01T12:00:00.000000Z",
+  "ends_at": "2026-12-31T12:00:00.000000Z",
   "status": "Ongoing",
+  "logo": "https://s3.eu-central-1.amazonaws.com/htb-ctf-prod-public-storage/organizations/logos/f30008f2-291b-4130-ac62-238138159847-logo.png",
   "hide_scoreboard": 0,
   "participating_team": {
     "id": 321013,
     "name": "v1olet",
-    "participating_members": 4,
-    "country_code": "DK",
-    "motto": null,
-    "avatar": null,
-    "points": 5000,
-    "solved_challenges": 10,
-    "total_challenges": 50,
-    "owned_flags": 12,
-    "total_flags": 60,
-    "rank": 42,
+    "participating_members": 5,
+    "country_code": "WO",
+    "motto": "Here to Rank",
+    "avatar": "https://s3.eu-central-1.amazonaws.com/htb-ctf-prod-public-storage/teams/d70a3280-1cce-494e-bd9a-f6fa27b86ff8-avatar.png",
+    "points": 12900,
+    "solved_challenges": 14,
+    "total_challenges": 37,
+    "owned_flags": 14,
+    "total_flags": 37,
+    "rank": 116,
     "vpn_server": null,
     "isCaptain": false,
     "is_host": false
   },
+  "hasVPN": null,
+  "hasPwnbox": false,
+  "light_mode": false,
+  "mcp_access_mode": "no_mcp",
+  "ai_usage_policy": null,
   "challenges": [
     {
       "id": 31855,
-      "name": "An unusual sighting",
-      "creator": "author1",
-      "description": "A forensics challenge",
-      "challenge_category_id": 8,
-      "difficulty": "Very Easy",
-      "filename": "sighting.zip",
-      "hasDocker": 0,
-      "docker_online": null,
-      "docker_ports": null,
-      "docker_instance_type": null,
-      "points": 725,
-      "solves": 100,
-      "hostname": null,
-      "new": 0,
-      "solved": true,
-      "status": null,
-      "flagsInfo": [
-        {"flag_id": 1, "identifier": null, "question": null, "solved": true}
-      ],
-      "machine": null,
-      "team_solves": []
-    },
-    {
-      "id": 40790,
-      "name": "NeoVault",
-      "creator": "author2",
-      "description": "A web challenge",
-      "challenge_category_id": 2,
-      "difficulty": "Easy",
-      "filename": null,
+      "name": "Welcome to CTF",
+      "creator": "makelaris",
+      "description": "Welcome to your first HTB Challenge on the CTF Platform! Click the Spawn Docker button to launch your challenge, and grab the provided IP to start your hacking journey.",
+      "challenge_category_id": 16,
+      "difficulty": "sanity check",
+      "filename": "",
       "hasDocker": 1,
       "docker_online": null,
       "docker_ports": null,
-      "docker_instance_type": "TCP",
-      "points": 500,
-      "solves": 42,
+      "docker_instance_type": "Web",
+      "points": 725,
+      "solves": 848,
       "hostname": null,
-      "new": 1,
-      "solved": false,
-      "status": "in progress",
+      "new": 0,
+      "hasMachine": null,
+      "isProlab": null,
       "flagsInfo": [
-        {"flag_id": 2, "identifier": null, "question": null, "solved": false}
+        {
+          "flag_id": 35179,
+          "identifier": null,
+          "question": null,
+          "solved": true
+        }
       ],
       "machine": null,
+      "status": null,
+      "solved": true,
+      "team_solves": [
+        {
+          "flag_id": 35179,
+          "solved_by": "https://htb-sso-prod-public-storage.s3.eu-central-1.amazonaws.com/users/3856f5fc-43ee-4fc7-bde8-e99d5b44b654-avatar.png",
+          "solved_at": "2026-07-22T06:03:05.000000Z"
+        }
+      ]
+    },
+    {
+      "id": 40799,
+      "name": "Abyss",
+      "creator": "makelaris",
+      "description": "Abyss is a secret collective of tech wizards with the single-minded aim of reintroducing the technology of old to the society of today. They are so indoctrinated to this faith that they will eradicate all that stand within their way. They are now going around, mumbling something about \"file transfers\" and spreading unrealistic lies about unattainable goals - can you analyse their work and see what they're up to?",
+      "challenge_category_id": 3,
+      "difficulty": "easy",
+      "filename": "pwn_abyss.zip",
+      "hasDocker": 1,
+      "docker_online": 1,
+      "docker_ports": [
+        30417
+      ],
+      "docker_instance_type": "TCP",
+      "points": 975,
+      "solves": 56,
+      "hostname": "154.57.164.83",
+      "new": 0,
+      "hasMachine": null,
+      "isProlab": null,
+      "flagsInfo": [
+        {
+          "flag_id": 262049,
+          "identifier": null,
+          "question": null,
+          "solved": false
+        }
+      ],
+      "machine": null,
+      "status": null,
+      "solved": false,
       "team_solves": []
     }
   ]
