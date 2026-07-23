@@ -1,0 +1,79 @@
+{
+  "challenge": {
+    "id": 960,
+    "name": "TestChallenge-Web",
+    "retired": true,
+    "state": "retired_free",
+    "difficulty": "Very Easy",
+    "points": 0,
+    "difficulty_chart": {
+      "counterCake": 162,
+      "counterVeryEasy": 192,
+      "counterEasy": 335,
+      "counterTooEasy": 305,
+      "counterMedium": 121,
+      "counterBitHard": 42,
+      "counterHard": 29,
+      "counterTooHard": 3,
+      "counterExHard": 3,
+      "counterBrainFuck": 9
+    },
+    "solves": 1532,
+    "authUserSolveTime": null,
+    "likes": 0,
+    "dislikes": 0,
+    "stars": 4.8,
+    "description": "A test web challenge with docker",
+    "category_name": "Web",
+    "first_blood_user_id": 16,
+    "first_blood_user": "TestBot",
+    "first_blood_time": "0H 0M 2S",
+    "first_blood_user_avatar": "https://example.com/avatar.png",
+    "creator_id": 532180,
+    "creator_name": "creator2",
+    "creator_avatar": "https://example.com/avatar.png",
+    "isRespected": false,
+    "creator2_id": null,
+    "creator2_name": null,
+    "creator2_avatar": null,
+    "isRespected2": null,
+    "download": false,
+    "file_name": null,
+    "file_size": null,
+    "sha256": null,
+    "docker": true,
+    "docker_ip": "154.57.164.69",
+    "docker_ports": [
+      31674
+    ],
+    "docker_status": "ready",
+    "play_info": {
+      "status": "ready",
+      "expires_at": "2026-07-23T11:05:30.000Z",
+      "ip": "154.57.164.69",
+      "ports": [
+        31674
+      ]
+    },
+    "release_date": "2025-07-18T20:00:00.000000Z",
+    "released": 1,
+    "authUserSolve": false,
+    "likeByAuthUser": false,
+    "dislikeByAuthUser": false,
+    "isTodo": false,
+    "recommended": 0,
+    "authUserHasReviewed": false,
+    "user_can_review": true,
+    "can_access_walkthough": true,
+    "tags": [],
+    "play_methods": [
+      "container"
+    ],
+    "reviews_count": 36,
+    "has_changelog": false,
+    "show_go_vip": false,
+    "user_submitted_difficulty": null,
+    "avatar_url": "https://htb-mp-prod-public-storage.s3.eu-central-1.amazonaws.com/challenge_categories/e4da3b7fbbce2345d7772b0674a318d5.svg",
+    "experience_points": 100
+  }
+}

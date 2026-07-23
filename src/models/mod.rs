@@ -131,4 +131,66 @@ mod tests {
         let n: T = serde_json::from_str(r#"{"val": null}"#).unwrap();
         assert!(n.val.is_none());
     }
+
+    #[test]
+    fn string_or_int_handles_bool() {
+        #[derive(Deserialize)]
+        struct T {
+            #[serde(default, deserialize_with = "deserialize_string_or_int")]
+            val: Option<String>,
+        }
+        let t: T = serde_json::from_str(r#"{"val": true}"#).unwrap();
+        assert_eq!(t.val.as_deref(), Some("true"));
+        let f: T = serde_json::from_str(r#"{"val": false}"#).unwrap();
+        assert_eq!(f.val.as_deref(), Some("false"));
+    }
+
+    #[test]
+    fn string_or_int_handles_float() {
+        #[derive(Deserialize)]
+        struct T {
+            #[serde(default, deserialize_with = "deserialize_string_or_int")]
+            val: Option<String>,
+        }
+        let f: T = serde_json::from_str(r#"{"val": 4.5}"#).unwrap();
+        assert_eq!(f.val.as_deref(), Some("4.5"));
+    }
+
+    #[test]
+    fn string_or_int_handles_empty_string() {
+        #[derive(Deserialize)]
+        struct T {
+            #[serde(default, deserialize_with = "deserialize_string_or_int")]
+            val: Option<String>,
+        }
+        let e: T = serde_json::from_str(r#"{"val": ""}"#).unwrap();
+        assert_eq!(e.val.as_deref(), Some(""));
+    }
+
+    #[test]
+    fn bool_or_null_handles_integers() {
+        #[derive(Deserialize)]
+        struct T {
+            #[serde(default, deserialize_with = "deserialize_bool_or_null")]
+            flag: bool,
+        }
+        // Integers are not bools in JSON - these should fail to parse
+        // but the API might send them, so document the behavior
+        let zero = serde_json::from_str::<T>(r#"{"flag": 0}"#);
+        let one = serde_json::from_str::<T>(r#"{"flag": 1}"#);
+        // serde's Option<bool> rejects integers, so these error
+        assert!(zero.is_err());
+        assert!(one.is_err());
+    }
+
+    #[test]
+    fn bool_or_null_rejects_string() {
+        #[derive(Deserialize)]
+        struct T {
+            #[serde(default, deserialize_with = "deserialize_bool_or_null")]
+            flag: bool,
+        }
+        let s = serde_json::from_str::<T>(r#"{"flag": "true"}"#);
+        assert!(s.is_err());
+    }
 }
