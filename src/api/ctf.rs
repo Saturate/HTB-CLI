@@ -2,7 +2,8 @@ use serde_json::json;
 
 use crate::error::HtbError;
 use crate::models::ctf::{
-    CtfEvent, CtfEventData, CtfEventDetail, CtfFlagResult, CtfMenu, CtfUserProfile,
+    CtfChallengeSolve, CtfEvent, CtfEventData, CtfEventDetail, CtfFlagResult, CtfMenu,
+    CtfScoreboard, CtfSolve, CtfUserProfile,
 };
 use crate::models::ActionResponse;
 
@@ -68,6 +69,27 @@ impl CtfApi<'_> {
                 "/api/challenges/containers/stop",
                 &json!({"id": challenge_id}),
             )
+            .await
+    }
+
+    pub async fn scoreboard(&self, event_id: u64) -> Result<CtfScoreboard, HtbError> {
+        self.0
+            .get(&format!("/api/ctfs/scores/{event_id}"))
+            .await
+    }
+
+    pub async fn solves(&self, event_id: u64) -> Result<Vec<CtfSolve>, HtbError> {
+        self.0
+            .get(&format!("/api/ctfs/solves/{event_id}"))
+            .await
+    }
+
+    pub async fn challenge_solves(
+        &self,
+        challenge_id: u64,
+    ) -> Result<Vec<CtfChallengeSolve>, HtbError> {
+        self.0
+            .get(&format!("/api/challenges/{challenge_id}/solves"))
             .await
     }
 }

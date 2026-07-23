@@ -235,6 +235,135 @@ pub struct CtfMenu {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct CtfScoreboard {
+    #[serde(default)]
+    pub ctf_name: Option<String>,
+    #[serde(default)]
+    pub ctf_teams: Option<u32>,
+    #[serde(default)]
+    pub ctf_players: Option<u32>,
+    #[serde(default)]
+    pub is_ended: bool,
+    #[serde(default)]
+    pub participating_team: Option<CtfScoreboardTeam>,
+    #[serde(default)]
+    pub scores: Vec<CtfTeamScore>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CtfScoreboardTeam {
+    pub id: u64,
+    pub name: String,
+    #[serde(default)]
+    pub position: Option<u32>,
+    #[serde(default)]
+    pub points: Option<u32>,
+    #[serde(default)]
+    pub solved_challenges: Option<u32>,
+    #[serde(default)]
+    pub total_challenges: Option<u32>,
+    #[serde(default)]
+    pub owned_flags: Option<u32>,
+    #[serde(default)]
+    pub first_bloods: Option<u32>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CtfTeamScore {
+    pub id: u64,
+    pub name: String,
+    #[serde(default)]
+    pub country_code: Option<String>,
+    #[serde(default)]
+    pub points: Option<u32>,
+    #[serde(default)]
+    pub owned_flags: Option<u32>,
+    #[serde(default)]
+    pub first_bloods: Option<u32>,
+}
+
+impl Tabular for CtfTeamScore {
+    fn headers() -> Vec<&'static str> {
+        vec!["#", "Team", "Country", "Points", "Flags", "Bloods"]
+    }
+
+    fn row(&self) -> Vec<String> {
+        vec![
+            String::new(), // rank filled by display
+            self.name.clone(),
+            self.country_code.clone().unwrap_or_default(),
+            self.points.map(|p| p.to_string()).unwrap_or_default(),
+            self.owned_flags.map(|f| f.to_string()).unwrap_or_default(),
+            self.first_bloods.map(|b| b.to_string()).unwrap_or_default(),
+        ]
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CtfSolve {
+    #[serde(default)]
+    pub challenge_name: Option<String>,
+    #[serde(default)]
+    pub challenge_category: Option<String>,
+    #[serde(default)]
+    pub team_name: Option<String>,
+    #[serde(default)]
+    pub user_name: Option<String>,
+    #[serde(default)]
+    pub created_at: Option<String>,
+}
+
+impl Tabular for CtfSolve {
+    fn headers() -> Vec<&'static str> {
+        vec!["Challenge", "Category", "Team", "Player", "Time"]
+    }
+
+    fn row(&self) -> Vec<String> {
+        vec![
+            self.challenge_name.clone().unwrap_or_default(),
+            self.challenge_category.clone().unwrap_or_default(),
+            self.team_name.clone().unwrap_or_default(),
+            self.user_name.clone().unwrap_or_default(),
+            self.created_at.clone().unwrap_or_default(),
+        ]
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CtfChallengeSolve {
+    #[serde(default)]
+    pub team_id: Option<u64>,
+    #[serde(default)]
+    pub team_name: Option<String>,
+    #[serde(default)]
+    pub date_of_latest_own: Option<String>,
+    #[serde(default)]
+    pub user_of_latest_own: Option<CtfSolveUser>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CtfSolveUser {
+    pub name: String,
+}
+
+impl Tabular for CtfChallengeSolve {
+    fn headers() -> Vec<&'static str> {
+        vec!["Team", "Player", "Time"]
+    }
+
+    fn row(&self) -> Vec<String> {
+        vec![
+            self.team_name.clone().unwrap_or_default(),
+            self.user_of_latest_own
+                .as_ref()
+                .map(|u| u.name.clone())
+                .unwrap_or_default(),
+            self.date_of_latest_own.clone().unwrap_or_default(),
+        ]
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CtfFlagResult {
     pub message: String,
     #[serde(default)]
@@ -359,6 +488,54 @@ mod tests {
         let team = data.participating_team.unwrap();
         assert_eq!(team.rank, Some(42));
         assert_eq!(team.points, Some(5000));
+    }
+
+    #[test]
+    fn deserialize_ctf_scoreboard() {
+        let json = r#"{
+            "ctf_name": "CTF Try Out",
+            "ctf_teams": 300,
+            "ctf_players": 1200,
+            "is_ended": false,
+            "participating_team": {
+                "id": 321013,
+                "name": "v1olet",
+                "position": 42,
+                "points": 5000,
+                "solved_challenges": 10,
+                "total_challenges": 50,
+                "owned_flags": 10,
+                "first_bloods": 2
+            },
+            "scores": [{
+                "id": 1,
+                "name": "Top Team",
+                "country_code": "US",
+                "points": 10000,
+                "owned_flags": 50,
+                "first_bloods": 5
+            }]
+        }"#;
+        let sb: CtfScoreboard = serde_json::from_str(json).unwrap();
+        assert_eq!(sb.ctf_teams, Some(300));
+        assert_eq!(sb.scores.len(), 1);
+        assert_eq!(sb.scores[0].points, Some(10000));
+        let team = sb.participating_team.unwrap();
+        assert_eq!(team.position, Some(42));
+    }
+
+    #[test]
+    fn deserialize_ctf_solve() {
+        let json = r#"{
+            "challenge_name": "LootStash",
+            "challenge_category": "Reversing",
+            "team_name": "v1olet",
+            "user_name": "LANGSOMT",
+            "created_at": "2026-07-22T11:12:05.000000Z"
+        }"#;
+        let solve: CtfSolve = serde_json::from_str(json).unwrap();
+        assert_eq!(solve.challenge_name.as_deref(), Some("LootStash"));
+        assert_eq!(solve.team_name.as_deref(), Some("v1olet"));
     }
 
     #[test]

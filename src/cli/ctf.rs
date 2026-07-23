@@ -64,6 +64,21 @@ pub enum CtfCommand {
         /// Challenge ID
         challenge_id: u64,
     },
+    /// Show event scoreboard
+    Scoreboard {
+        /// Event ID
+        event_id: u64,
+    },
+    /// Show recent solves for an event
+    Solves {
+        /// Event ID
+        event_id: u64,
+    },
+    /// Show solves for a specific challenge
+    ChallengeSolves {
+        /// Challenge ID
+        challenge_id: u64,
+    },
 }
 
 #[derive(Subcommand)]
@@ -105,6 +120,11 @@ pub async fn handle(
             event_id,
             challenge_id,
         } => stop(event_id, challenge_id, cache).await,
+        CtfCommand::Scoreboard { event_id } => scoreboard(event_id, format, cache).await,
+        CtfCommand::Solves { event_id } => solves(event_id, format, cache).await,
+        CtfCommand::ChallengeSolves { challenge_id } => {
+            challenge_solves(challenge_id, format, cache).await
+        }
     }
 }
 
@@ -377,5 +397,101 @@ async fn stop(
 
     let resp = client.ctf().container_stop(challenge_id).await?;
     crate::output::print_message(&resp.message);
+    Ok(())
+}
+
+async fn scoreboard(
+    event_id: u64,
+    format: OutputFormat,
+    cache: &Arc<Cache>,
+) -> anyhow::Result<()> {
+    let client = ctf_client(cache)?;
+
+    let menu = client.ctf().menu(event_id).await?;
+    if menu.user_can_view_scoreboard == Some(0) {
+        anyhow::bail!("Scoreboard is hidden for this event.");
+    }
+
+    let sb = client.ctf().scoreboard(event_id).await?;
+
+    if let Some(team) = &sb.participating_team {
+        crate::output::print_message(&format!(
+            "Your team: {} | Rank: {} | Points: {} | Flags: {} | Bloods: {}",
+            team.name,
+            team.position.map(|p| p.to_string()).unwrap_or_else(|| "-".into()),
+            team.points.unwrap_or(0),
+            team.owned_flags.unwrap_or(0),
+            team.first_bloods.unwrap_or(0),
+        ));
+    }
+
+    // Add rank numbers to the score table
+    let scores: Vec<_> = sb
+        .scores
+        .iter()
+        .enumerate()
+        .map(|(i, s)| RankedScore {
+            rank: i as u32 + 1,
+            score: s,
+        })
+        .collect();
+
+    crate::output::print_list(&scores, format);
+    Ok(())
+}
+
+struct RankedScore<'a> {
+    rank: u32,
+    score: &'a crate::models::ctf::CtfTeamScore,
+}
+
+impl serde::Serialize for RankedScore<'_> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.score.serialize(serializer)
+    }
+}
+
+impl crate::output::Tabular for RankedScore<'_> {
+    fn headers() -> Vec<&'static str> {
+        vec!["#", "Team", "Country", "Points", "Flags", "Bloods"]
+    }
+
+    fn row(&self) -> Vec<String> {
+        vec![
+            self.rank.to_string(),
+            self.score.name.clone(),
+            self.score.country_code.clone().unwrap_or_default(),
+            self.score.points.map(|p| p.to_string()).unwrap_or_default(),
+            self.score
+                .owned_flags
+                .map(|f| f.to_string())
+                .unwrap_or_default(),
+            self.score
+                .first_bloods
+                .map(|b| b.to_string())
+                .unwrap_or_default(),
+        ]
+    }
+}
+
+async fn solves(
+    event_id: u64,
+    format: OutputFormat,
+    cache: &Arc<Cache>,
+) -> anyhow::Result<()> {
+    let client = ctf_client(cache)?;
+    let solves = client.ctf().solves(event_id).await?;
+    crate::output::print_list(&solves, format);
+    Ok(())
+}
+
+async fn challenge_solves(
+    challenge_id: u64,
+    format: OutputFormat,
+    cache: &Arc<Cache>,
+) -> anyhow::Result<()> {
+    let client = ctf_client(cache)?;
+    let solves = client.ctf().challenge_solves(challenge_id).await?;
+    crate::output::print_list(&solves, format);
     Ok(())
 }
