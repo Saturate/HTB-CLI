@@ -1,4 +1,5 @@
 pub mod challenges;
+pub mod ctf;
 pub mod machines;
 pub mod search;
 pub mod seasons;
@@ -90,7 +91,6 @@ impl HtbClient {
         Self::build(token, BASE_URL.to_string(), Some(cache))
     }
 
-    #[cfg(test)]
     pub fn with_base_url(token: String, base_url: String) -> Self {
         Self::build(token, base_url, None)
     }
@@ -332,6 +332,10 @@ impl HtbClient {
         if limit != u32::MAX {
             tracing::debug!(remaining, limit, "rate limit");
         }
+    }
+
+    pub fn ctf(&self) -> ctf::CtfApi<'_> {
+        ctf::CtfApi(self)
     }
 
     pub fn user(&self) -> user::UserApi<'_> {
