@@ -1,5 +1,10 @@
+use serde_json::json;
+
 use crate::error::HtbError;
-use crate::models::ctf::{CtfEvent, CtfEventData, CtfEventDetail, CtfMenu, CtfUserProfile};
+use crate::models::ctf::{
+    CtfEvent, CtfEventData, CtfEventDetail, CtfFlagResult, CtfMenu, CtfUserProfile,
+};
+use crate::models::ActionResponse;
 
 use super::HtbClient;
 
@@ -27,5 +32,42 @@ impl CtfApi<'_> {
 
     pub async fn menu(&self, event_id: u64) -> Result<CtfMenu, HtbError> {
         self.0.get(&format!("/api/ctfs/{event_id}/menu")).await
+    }
+
+    pub async fn submit_flag(
+        &self,
+        challenge_id: u64,
+        flag: &str,
+    ) -> Result<CtfFlagResult, HtbError> {
+        self.0
+            .post(
+                "/api/flags/own",
+                &json!({"challenge_id": challenge_id, "flag": flag}),
+            )
+            .await
+    }
+
+    pub async fn download_file(&self, challenge_id: u64) -> Result<Vec<u8>, HtbError> {
+        self.0
+            .get_bytes(&format!("/api/challenges/{challenge_id}/download"))
+            .await
+    }
+
+    pub async fn container_start(&self, challenge_id: u64) -> Result<ActionResponse, HtbError> {
+        self.0
+            .post(
+                "/api/challenges/containers/start",
+                &json!({"id": challenge_id}),
+            )
+            .await
+    }
+
+    pub async fn container_stop(&self, challenge_id: u64) -> Result<ActionResponse, HtbError> {
+        self.0
+            .post(
+                "/api/challenges/containers/stop",
+                &json!({"id": challenge_id}),
+            )
+            .await
     }
 }

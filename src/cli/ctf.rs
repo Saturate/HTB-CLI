@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use clap::Subcommand;
 
@@ -35,6 +36,34 @@ pub enum CtfCommand {
         #[arg(long, help = "Filter by difficulty")]
         difficulty: Option<String>,
     },
+    /// Submit a flag
+    Submit {
+        /// Challenge ID
+        challenge_id: u64,
+        /// The flag
+        flag: String,
+    },
+    /// Download challenge files
+    Download {
+        /// Event ID (for validation)
+        event_id: u64,
+        /// Challenge ID
+        challenge_id: u64,
+    },
+    /// Start a challenge container
+    Start {
+        /// Event ID (for status polling)
+        event_id: u64,
+        /// Challenge ID
+        challenge_id: u64,
+    },
+    /// Stop a challenge container
+    Stop {
+        /// Event ID
+        event_id: u64,
+        /// Challenge ID
+        challenge_id: u64,
+    },
 }
 
 #[derive(Subcommand)]
@@ -60,6 +89,22 @@ pub async fn handle(
             event_id,
             difficulty,
         } => challenges(event_id, difficulty.as_deref(), format, cache).await,
+        CtfCommand::Submit {
+            challenge_id,
+            flag,
+        } => submit(challenge_id, &flag, cache).await,
+        CtfCommand::Download {
+            event_id,
+            challenge_id,
+        } => download(event_id, challenge_id, cache).await,
+        CtfCommand::Start {
+            event_id,
+            challenge_id,
+        } => start(event_id, challenge_id, cache).await,
+        CtfCommand::Stop {
+            event_id,
+            challenge_id,
+        } => stop(event_id, challenge_id, cache).await,
     }
 }
 
@@ -230,5 +275,107 @@ async fn challenges(
     }
 
     crate::output::print_list(&challenges, format);
+    Ok(())
+}
+
+async fn submit(challenge_id: u64, flag: &str, cache: &Arc<Cache>) -> anyhow::Result<()> {
+    let client = ctf_client(cache)?;
+    let result = client.ctf().submit_flag(challenge_id, flag).await?;
+    if let Some(points) = result.points {
+        crate::output::print_message(&format!("{} (+{} points)", result.message, points));
+    } else {
+        crate::output::print_message(&result.message);
+    }
+    Ok(())
+}
+
+async fn download(
+    event_id: u64,
+    challenge_id: u64,
+    cache: &Arc<Cache>,
+) -> anyhow::Result<()> {
+    let client = ctf_client(cache)?;
+
+    let data = client.ctf().event_data(event_id).await?;
+    let challenge = data
+        .challenges
+        .iter()
+        .find(|c| c.id == challenge_id)
+        .ok_or_else(|| anyhow::anyhow!("Challenge {challenge_id} not found in event {event_id}"))?;
+
+    let filename = match &challenge.filename {
+        Some(f) => f.clone(),
+        None => anyhow::bail!("No files available for this challenge."),
+    };
+
+    let bytes = client.ctf().download_file(challenge_id).await?;
+    let safe_name = crate::sanitize_filename(&filename, &format!("{challenge_id}.zip"));
+    std::fs::write(&safe_name, &bytes)?;
+    crate::output::print_message(&format!("Downloaded {} ({} bytes)", safe_name, bytes.len()));
+    Ok(())
+}
+
+async fn start(
+    event_id: u64,
+    challenge_id: u64,
+    cache: &Arc<Cache>,
+) -> anyhow::Result<()> {
+    let client = ctf_client(cache)?;
+
+    let data = client.ctf().event_data(event_id).await?;
+    let challenge = data
+        .challenges
+        .iter()
+        .find(|c| c.id == challenge_id)
+        .ok_or_else(|| anyhow::anyhow!("Challenge {challenge_id} not found in event {event_id}"))?;
+
+    if challenge.has_docker.unwrap_or(0) == 0 {
+        anyhow::bail!("This challenge doesn't use a container.");
+    }
+
+    let resp = client.ctf().container_start(challenge_id).await?;
+    crate::output::print_message(&resp.message);
+
+    // Poll for container ready state
+    for _ in 0..15 {
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        let poll = client.ctf().event_data(event_id).await?;
+        if let Some(c) = poll.challenges.iter().find(|c| c.id == challenge_id) {
+            if let Some(ref addr) = c.docker_online {
+                let port_info = c.docker_ports.as_deref().unwrap_or("");
+                if port_info.is_empty() {
+                    crate::output::print_message(&format!("Ready: {addr}"));
+                } else {
+                    crate::output::print_message(&format!("Ready: {addr}:{port_info}"));
+                }
+                return Ok(());
+            }
+        }
+    }
+
+    crate::output::print_message("Container started but not ready yet. Check back shortly.");
+    Ok(())
+}
+
+async fn stop(
+    event_id: u64,
+    challenge_id: u64,
+    cache: &Arc<Cache>,
+) -> anyhow::Result<()> {
+    let client = ctf_client(cache)?;
+
+    let data = client.ctf().event_data(event_id).await?;
+    let challenge = data
+        .challenges
+        .iter()
+        .find(|c| c.id == challenge_id)
+        .ok_or_else(|| anyhow::anyhow!("Challenge {challenge_id} not found in event {event_id}"))?;
+
+    if challenge.has_docker.unwrap_or(0) == 0 {
+        anyhow::bail!("This challenge doesn't use a container.");
+    }
+
+    let resp = client.ctf().container_stop(challenge_id).await?;
+    crate::output::print_message(&resp.message);
     Ok(())
 }

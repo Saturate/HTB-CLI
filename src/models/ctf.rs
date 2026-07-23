@@ -234,6 +234,13 @@ pub struct CtfMenu {
     pub status: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CtfFlagResult {
+    pub message: String,
+    #[serde(default)]
+    pub points: Option<u32>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -352,6 +359,14 @@ mod tests {
         let team = data.participating_team.unwrap();
         assert_eq!(team.rank, Some(42));
         assert_eq!(team.points, Some(5000));
+    }
+
+    #[test]
+    fn deserialize_ctf_flag_result() {
+        let json = r#"{"message": "Correct flag!", "points": 725}"#;
+        let result: CtfFlagResult = serde_json::from_str(json).unwrap();
+        assert_eq!(result.message, "Correct flag!");
+        assert_eq!(result.points, Some(725));
     }
 
     #[test]
