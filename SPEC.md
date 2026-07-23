@@ -344,6 +344,249 @@ Token stored separately at `~/.htb-cli/.token` (plaintext, 0o600 permissions).
 
 ---
 
+# Feature Spec: CTF Platform Support
+
+## Objective
+
+Add support for the HTB CTF platform (`ctf.hackthebox.com`) alongside the existing labs platform. CTF players can list events, browse challenges within an event, start/stop containers, submit flags, download challenge files, view scoreboards, and check solves - all from the terminal.
+
+The CTF platform runs on a separate domain with its own API (`/api/` prefix, no version), separate JWT auth (audience `"2"`), and a team-centric model where solves are attributed to teams.
+
+Target users: CTF players who want to interact with HTB CTF events without switching to the browser during a competition.
+
+## API Surface
+
+Based on HAR analysis of `ctf.hackthebox.com`. All endpoints use Bearer JWT auth and the `/api/` prefix (no version).
+
+### Discovery
+
+| Method | Path | Returns |
+|---|---|---|
+| `GET` | `/api/ctfs` | Array of CTF events with status, dates, team info |
+| `GET` | `/api/ctfs/details/{slug}` | Event details (description, prizes, player counts) |
+| `GET` | `/api/ctfs/{id}` | Event + participating team + full challenge list |
+| `GET` | `/api/ctfs/{id}/menu` | Permissions and nav info |
+| `GET` | `/api/public/challenge-categories` | All 32 challenge categories |
+
+### Scoreboard
+
+| Method | Path | Returns |
+|---|---|---|
+| `GET` | `/api/ctfs/scores/{ctf_id}` | Top 100 teams + your team's rank |
+| `GET` | `/api/ctfs/score-charts/{ctf_id}` | Time-series score progression (top 10), summary cards |
+| `GET` | `/api/ctfs/solves/{ctf_id}` | Recent solves feed across the event |
+
+### Challenge interaction
+
+| Method | Path | Returns |
+|---|---|---|
+| `POST` | `/api/flags/own` | Submit flag (body: `{challenge_id, flag}`) |
+| `GET` | `/api/challenges/{id}/solves` | Per-challenge team leaderboard |
+| `GET` | `/api/challenges/{id}/download` | Download challenge ZIP (binary) |
+| `GET` | `/api/challenges/{id}/download/link` | Signed download URL |
+| `POST` | `/api/challenges/containers/start` | Start Docker instance (body: `{id}`) |
+| `POST` | `/api/challenges/containers/stop` | Stop Docker instance (body: `{id}`) |
+
+### Team coordination
+
+| Method | Path | Returns |
+|---|---|---|
+| `GET` | `/api/challenges/{id}/associations` | Team member assignment list |
+| `GET` | `/api/challenges/{id}/associate/{user_id}` | Assign/toggle member on challenge |
+| `POST` | `/api/challenges/{id}/progress` | Set status: not started / in progress / need help |
+
+### User
+
+| Method | Path | Returns |
+|---|---|---|
+| `GET` | `/api/users/profile` | Current user (CTF context) |
+| `GET` | `/api/users/profile/details/{id}` | Public profile with CTF stats |
+
+### Not in scope for v1
+
+- Team management (create/join/leave)
+- Team chat (`/api/chat/`)
+- CTF join/leave flow
+- Notifications
+- Organization settings
+
+## Design
+
+### Auth
+
+CTF uses a separate JWT with audience `"2"`, obtained from the CTF platform login. Store alongside the labs token:
+
+```
+~/.htb-cli/.token        # labs token (existing)
+~/.htb-cli/.ctf-token    # CTF platform token
+```
+
+`htb ctf auth login` prompts for the CTF token separately. The CTF token can be generated from the CTF platform's settings page, or the user pastes a JWT.
+
+### Client reuse
+
+`HtbClient` already supports configurable `base_url`. The CTF client is a second `HtbClient` instance with:
+- `base_url`: `https://ctf.hackthebox.com`
+- `token`: CTF-specific JWT
+- Same rate limiting, caching, and error handling
+
+A factory function builds it:
+
+```rust
+fn ctf_client(cache: Arc<Cache>) -> anyhow::Result<HtbClient> {
+    let token = config::read_ctf_token()?;
+    Ok(HtbClient::with_base_url_and_cache(
+        token,
+        "https://ctf.hackthebox.com".to_string(),
+        cache,
+    ))
+}
+```
+
+### HtbClient additions
+
+**`post_no_content`**: `POST /api/challenges/{id}/progress` returns 204 with no body. The existing `post` method tries to deserialize JSON and would fail. Add a `post_no_content` method that sends the request and returns `Ok(())` on 2xx without parsing a body.
+
+**Multi-flag challenges**: Challenges can have multiple flags (`flagsInfo` array with `flag_id`, `identifier`, `question`, `solved`). The `submit` command needs to accept an optional `--flag-id` for multi-flag challenges. If omitted on a multi-flag challenge, list the available flags and prompt. Needs testing against a live multi-flag challenge to confirm whether `POST /api/flags/own` accepts a `flag_id` field.
+
+### CLI structure
+
+New top-level `Ctf` subcommand. Mirrors the existing pattern of subcommand modules.
+
+```
+htb ctf auth login                          # Save CTF API token
+htb ctf auth status                         # Show CTF auth state
+htb ctf auth logout                         # Remove CTF token
+
+htb ctf events                              # List CTF events (ongoing, upcoming)
+htb ctf events --all                        # Include past events
+htb ctf info <slug>                         # Event details
+
+htb ctf challenges <event-id>               # List challenges in event
+htb ctf challenges <event-id> --category <cat>  # Filter by category
+
+htb ctf download <event-id> <challenge-id>   # Download challenge files
+htb ctf start <event-id> <challenge-id>     # Start challenge container
+htb ctf stop <event-id> <challenge-id>      # Stop challenge container
+htb ctf submit <challenge-id> <flag>        # Submit flag
+
+htb ctf scoreboard <event-id>               # Top teams + your rank (checks hide_scoreboard)
+htb ctf solves <event-id>                   # Recent solves feed
+htb ctf challenge-solves <challenge-id>     # Per-challenge team leaderboard
+```
+
+Challenge commands take IDs directly (not slugs) because the CTF API uses numeric IDs and challenges are listed from an event context, so the user always sees the ID first.
+
+Guards: `start` checks `hasDocker` before calling the API; `download` checks `filename` is present. Both produce a clear error if the challenge doesn't support the operation.
+
+### Models
+
+New module `src/models/ctf.rs` with CTF-specific types. The CTF API returns different shapes than the labs API, so separate models are cleaner than trying to unify:
+
+```rust
+pub struct CtfEvent { ... }          // from GET /api/ctfs
+pub struct CtfEventDetail { ... }    // from GET /api/ctfs/details/{slug}
+pub struct CtfEventData { ... }      // from GET /api/ctfs/{id}
+pub struct CtfChallenge { ... }      // nested in CtfEventData
+pub struct CtfFlagInfo { ... }       // nested in CtfChallenge
+pub struct CtfScoreboard { ... }     // from GET /api/ctfs/scores/{id}
+pub struct CtfTeamScore { ... }      // items in scoreboard
+pub struct CtfSolve { ... }          // from GET /api/ctfs/solves/{id}
+pub struct CtfChallengeSolve { ... } // from GET /api/challenges/{id}/solves
+pub struct CtfFlagResult { ... }     // from POST /api/flags/own
+pub struct CtfUserProfile { ... }    // from GET /api/users/profile
+```
+
+### Caching
+
+Reuse the existing cache infrastructure. Cache keys must include the base URL to avoid collisions between labs and CTF (e.g. both have `/api/users/profile`). The `Cache::set`/`get` methods already receive the full URL including base, so the sanitized filename naturally separates them (`ctf.hackthebox.com_api_users_profile` vs `labs.hackthebox.com_api_users_profile`). The `ttl_for_path` method needs platform awareness; solved by matching on the base_url or the path prefix patterns.
+
+CTF-specific TTL rules in `ttl_for_path`:
+
+| Path pattern | TTL | Rationale |
+|---|---|---|
+| `/api/ctfs` (event list) | 5 min | Events don't change often |
+| `/api/ctfs/details/*` | 5 min | Static event info |
+| `/api/ctfs/{id}` (challenges) | 30 s | Challenge solve counts update live |
+| `/api/ctfs/scores/*` | 30 s | Scoreboard changes during active CTF |
+| `/api/ctfs/solves/*` | 30 s | Solves feed updates frequently |
+| `/api/public/challenge-categories` | 30 min | Reference data |
+| `/api/users/profile*` | 2 min | Profile data |
+| POST endpoints, downloads | not cached | Mutations and binary data |
+
+Invalidation after POST: `flags/own` and `containers/start`/`stop` clear `api_ctfs_` and `api_challenges_` prefixed cache entries.
+
+### File structure
+
+```
+src/
+  api/
+    ctf.rs              # CtfApi struct with endpoint methods
+  cli/
+    ctf.rs              # CtfCommand enum, handle(), subcommand dispatch
+  models/
+    ctf.rs              # CTF response types + Tabular impls
+  config.rs             # add read_ctf_token, save_ctf_token, ctf_token_path
+  cli/mod.rs            # add Ctf variant to Command enum
+  api/mod.rs            # add ctf module, TTL rules for CTF paths
+  main.rs               # add Ctf dispatch arm
+```
+
+No new dependencies.
+
+### Container status polling
+
+The CTF API has no explicit container status endpoint. Container state (`docker_online`, `docker_ports`) is returned as fields on the challenge object within `GET /api/ctfs/{id}`. After `start`, poll `GET /api/ctfs/{id}` until `docker_online` is populated, with a timeout. Display the connection URL when ready.
+
+```
+$ htb ctf start 40790
+Container starting...
+Ready: 83.136.254.199:31337
+```
+
+### Edge cases
+
+- **Hidden scoreboard**: Check `GET /api/ctfs/{id}/menu` for `userCanViewScoreboard` before hitting the scores endpoint. Show "Scoreboard is hidden for this event" if disabled.
+- **Challenges without containers**: `hasDocker` is `0` or `null`. `htb ctf start` on these returns "This challenge doesn't use a container."
+- **Challenges without downloads**: `filename` is `null`. `htb ctf download` returns "No files available for this challenge."
+- **Multi-flag challenges**: `flagsInfo` has multiple entries. Show flag questions with `htb ctf challenges` output. Accept `--flag-id` on submit.
+
+## Testing Strategy
+
+- **Unit tests:** Deserialize CTF API responses from JSON fixtures in `tests/fixtures/ctf/`. One fixture per endpoint shape.
+- **Integration tests:** wiremock-based tests for the full request/response cycle, following the existing `tests/cache_integration.rs` pattern.
+- **No live API tests in CI.**
+
+Fixtures derived from the HAR captures, with sensitive data (tokens, real usernames) scrubbed.
+
+## Boundaries
+
+- **Always:** Use the CTF token for CTF endpoints (never the labs token). Respect rate limits. Cache appropriately. Guard commands against unsupported challenge types.
+- **Ask first:** Adding team management, chat, or CTF join/leave. Adding MCP tool exposure for CTF endpoints.
+- **Never:** Mix labs and CTF auth tokens. Store CTF tokens in config.toml. Auto-join CTF events.
+
+## Success Criteria
+
+- `htb ctf events` lists ongoing and upcoming CTF events in < 2s
+- `htb ctf challenges <event-id>` shows all challenges with category, points, difficulty, solved status
+- `htb ctf submit <id> <flag>` submits and shows result with points earned
+- `htb ctf scoreboard <event-id>` shows top teams and your team's rank/position
+- `htb ctf scoreboard` on an event with `hide_scoreboard=1` shows a clear message
+- `htb ctf start <id>` starts a container and reports the connection URL when ready
+- `htb ctf start` on a non-Docker challenge produces a clear error
+- `htb ctf download <id>` saves the challenge ZIP to the current directory
+- `htb ctf download` on a challenge without files produces a clear error
+- `--json` works on all CTF list/info/scoreboard commands
+- All existing labs tests pass unchanged
+- CTF auth is independent from labs auth
+
+## Open Questions
+
+1. Does `POST /api/flags/own` accept a `flag_id` field for multi-flag challenges, or does it match purely on the flag string? Needs testing against a live multi-flag challenge.
+2. Is there a container status polling endpoint we haven't captured, or is `GET /api/ctfs/{id}` the only way to check `docker_online`/`docker_ports`?
+
+---
+
 # Feature Spec: HTTP Response Caching
 
 ## Objective
