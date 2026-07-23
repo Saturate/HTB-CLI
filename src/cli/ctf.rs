@@ -11,7 +11,7 @@ const CTF_BASE_URL: &str = "https://ctf.hackthebox.com";
 
 #[derive(Subcommand)]
 #[command(
-    after_help = "Examples:\n  htb ctf auth login                     Save CTF API token\n  htb ctf events                         List CTF events\n  htb ctf info ctf-try-out-1434          Event details\n  htb ctf challenges 1434                Challenges in event\n  htb ctf submit 31855 'HTB{flag}'       Submit a flag\n  htb ctf scoreboard 1434                Event scoreboard"
+    after_help = "Workflow:\n  1. htb ctf auth login                  Authenticate (separate token from labs)\n  2. htb ctf events                      Find an event\n  3. htb ctf challenges 1434             Browse challenges\n  4. htb ctf start 1434 31855            Spin up the container\n  5. htb ctf download 1434 31855         Grab challenge files\n     ... hack ...\n  6. htb ctf submit 31855 'HTB{flag}'    Submit your flag\n  7. htb ctf stop 1434 31855             Clean up the container\n\nOther:\n  htb ctf info ctf-try-out-1434          Event details (by slug)\n  htb ctf scoreboard 1434                Team rankings\n  htb ctf solves 1434                    Recent solves feed\n  htb ctf challenge-solves 31855         Who solved a challenge"
 )]
 pub enum CtfCommand {
     /// Manage CTF authentication
