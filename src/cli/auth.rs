@@ -29,7 +29,7 @@ pub async fn handle(
 }
 
 async fn login(cache: &Cache) -> anyhow::Result<()> {
-    println!("Enter your HTB API token (from https://app.hackthebox.com/profile/settings):");
+    println!("Enter your HTB API token (from https://app.hackthebox.com/account-settings):");
     let token = rpassword::read_password()?;
     let token = token.trim().to_string();
 

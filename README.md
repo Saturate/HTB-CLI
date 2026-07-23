@@ -15,7 +15,7 @@ Or download a binary from [releases](https://github.com/Saturate/HTB-CLI/release
 ## Setup
 
 ```bash
-# Save your API token (from https://app.hackthebox.com/profile/settings)
+# Save your API token (from https://app.hackthebox.com/account-settings)
 htb auth login
 
 # Verify it works
