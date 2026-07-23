@@ -1,4 +1,16 @@
 # Changelog
+## 0.1.8 (2026-07-23)
+
+### Fixes
+
+#### Consolidate CLAUDE.md and AGENTS.md
+
+CLAUDE.md is now a symlink to AGENTS.md so there's one file to maintain.
+
+#### Add contributing guide
+
+Added CONTRIBUTING.md with build/test setup, changeset requirements, commit conventions, and code style guidelines. Removed SPEC.md and planning files in favor of GitHub issues for tracking remaining work.
+
 ## 0.1.7 (2026-07-23)
 
 ### Fixes
