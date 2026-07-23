@@ -236,6 +236,14 @@ impl HtbClient {
         if path.contains("/sherlocks/") && path.contains("/flag") {
             cache.invalidate_pattern("api_v4_sherlock");
         }
+        // CTF mutations
+        if path.contains("/flags/own")
+            || path.contains("/challenges/containers/start")
+            || path.contains("/challenges/containers/stop")
+        {
+            cache.invalidate_pattern("ctf.hackthebox.com_api_ctfs_");
+            cache.invalidate_pattern("ctf.hackthebox.com_api_challenges_");
+        }
     }
 
     pub async fn get_bytes(&self, url_or_path: &str) -> Result<Vec<u8>, HtbError> {
@@ -367,24 +375,30 @@ impl HtbClient {
     }
 
     fn ttl_for_path(&self, path: &str) -> Option<Duration> {
-        if path.contains("/download_link") {
+        if path.contains("/download") {
             return None;
         }
-        // Reference data (30 min)
+
+        let is_ctf = self.base_url.contains("ctf.hackthebox.com");
+        if is_ctf {
+            return self.ttl_for_ctf_path(path);
+        }
+
+        // Labs: reference data (30 min)
         if path.contains("/categories/list")
             || path.contains("/season/list")
             || path.contains("/tags/list")
         {
             return Some(Duration::from_secs(1800));
         }
-        // Lists (5 min)
+        // Labs: lists (5 min)
         if path.starts_with("/api/v5/machines")
             || path.starts_with("/api/v4/challenges?")
             || path.starts_with("/api/v4/sherlocks?")
         {
             return Some(Duration::from_secs(300));
         }
-        // Profiles (2 min)
+        // Labs: profiles (2 min)
         if path.contains("/machine/profile/")
             || path.contains("/challenge/info/")
             || path.contains("/sherlocks/")
@@ -392,6 +406,34 @@ impl HtbClient {
             || path.contains("/user/profile/")
         {
             return Some(Duration::from_secs(120));
+        }
+        None
+    }
+
+    fn ttl_for_ctf_path(&self, path: &str) -> Option<Duration> {
+        // Reference data (30 min)
+        if path.starts_with("/api/public/challenge-categories") {
+            return Some(Duration::from_secs(1800));
+        }
+        // Event list and details (5 min)
+        if path == "/api/ctfs" || path.starts_with("/api/ctfs/details/") {
+            return Some(Duration::from_secs(300));
+        }
+        // Profiles (2 min)
+        if path.starts_with("/api/users/profile") {
+            return Some(Duration::from_secs(120));
+        }
+        // Live data: challenges, scoreboard, solves (30 s)
+        if path.starts_with("/api/ctfs/scores/")
+            || path.starts_with("/api/ctfs/solves/")
+            || path.starts_with("/api/ctfs/score-charts/")
+            || path.starts_with("/api/challenges/")
+        {
+            return Some(Duration::from_secs(30));
+        }
+        // Event data with challenges (30 s)
+        if path.starts_with("/api/ctfs/") {
+            return Some(Duration::from_secs(30));
         }
         None
     }
