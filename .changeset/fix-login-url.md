@@ -1,5 +1,5 @@
 ---
-htb-cli: patch
+default: patch
 ---
 
 #### Fix HTB account settings URL

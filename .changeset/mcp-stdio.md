@@ -1,5 +1,5 @@
 ---
-htb-cli: minor
+default: minor
 ---
 
 #### MCP stdio server mode

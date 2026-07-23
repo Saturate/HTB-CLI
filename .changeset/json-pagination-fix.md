@@ -1,5 +1,5 @@
 ---
-htb-cli: patch
+default: patch
 ---
 
 #### Fix JSON output broken by pagination footer

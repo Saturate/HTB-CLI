@@ -1,5 +1,5 @@
 ---
-htb-cli: minor
+default: minor
 ---
 
 #### HTTP response caching

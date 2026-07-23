@@ -1,5 +1,5 @@
 ---
-htb-cli: minor
+default: minor
 ---
 
 #### PwnBox commands
