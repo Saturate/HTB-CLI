@@ -1,4 +1,16 @@
 # Changelog
+## 0.1.6 (2026-07-23)
+
+### Fixes
+
+#### Document CTF workflow
+
+Added CTF and PwnBox sections to the README with the full challenge workflow. Expanded `htb ctf --help` with numbered steps showing the typical flow from auth through flag submission.
+
+#### Fix CTF API deserialization errors
+
+`hasJoined`, `hide_scoreboard`, `docker_online`, and `docker_ports` now handle the types the API actually sends (`null`, integers, arrays) instead of failing on deserialization.
+
 ## 0.1.5 (2026-07-23)
 
 ### Features
