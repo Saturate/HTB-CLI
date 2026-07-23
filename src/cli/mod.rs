@@ -3,6 +3,7 @@ pub mod cache;
 pub mod challenges;
 pub mod ctf;
 pub mod machines;
+pub mod pwnbox;
 pub mod search;
 pub mod seasons;
 pub mod sherlocks;
@@ -77,6 +78,11 @@ pub enum Command {
     User {
         #[command(subcommand)]
         command: user::UserCommand,
+    },
+    /// Check PwnBox status and usage
+    Pwnbox {
+        #[command(subcommand)]
+        command: pwnbox::PwnboxCommand,
     },
     /// Interact with CTF events and challenges
     Ctf {
