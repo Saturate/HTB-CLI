@@ -48,10 +48,10 @@
     "org_logo": "https://example.com/logo.png",
     "canPlay": true,
     "canJoin": true,
-    "hasJoined": 0,
+    "hasJoined": null,
     "joinedTeam": null,
     "joinedTeamAvatar": null,
-    "membersJoined": "0/4",
+    "membersJoined": null,
     "hide_scoreboard": 0,
     "mcp_access_mode": "no_mcp"
   }
