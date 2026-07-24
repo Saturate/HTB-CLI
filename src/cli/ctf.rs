@@ -11,7 +11,7 @@ const CTF_BASE_URL: &str = "https://ctf.hackthebox.com";
 
 #[derive(Subcommand)]
 #[command(
-    after_help = "Workflow:\n  1. htb ctf auth login                  Authenticate (separate token from labs)\n  2. htb ctf events                      Find an event\n  3. htb ctf use 1434                    Set active event (sticky)\n  4. htb ctf challenges                  Browse challenges\n  5. htb ctf start 31855                 Spin up the container\n  6. htb ctf download 31855              Grab challenge files\n     ... hack ...\n  7. htb ctf submit 31855 'HTB{flag}'    Submit your flag\n  8. htb ctf stop 31855                  Clean up the container\n\nOther:\n  htb ctf info ctf-try-out-1434          Event details (by slug)\n  htb ctf scoreboard                     Team rankings\n  htb ctf solves                         Recent solves feed\n  htb ctf challenge-solves 31855         Who solved a challenge"
+    after_help = "Workflow:\n  1. htb ctf auth login                  Authenticate (separate token from labs)\n  2. htb ctf events                      Find an event\n  3. htb ctf use 1434                    Set active event (sticky)\n  4. htb ctf challenges                  Browse challenges\n  5. htb ctf start 31855                 Spin up the container\n  6. htb ctf download 31855              Grab challenge files\n     ... hack ...\n  7. htb ctf submit 31855 'HTB{flag}'    Submit your flag\n  8. htb ctf stop 31855                  Clean up the container\n\nOverride active event:\n  htb ctf start -e 1434 31855           Explicit event for one command\n  htb ctf use --clear                    Remove sticky event\n\nOther:\n  htb ctf info ctf-try-out-1434          Event details (by slug)\n  htb ctf scoreboard                     Team rankings\n  htb ctf solves                         Recent solves feed\n  htb ctf challenge-solves 31855         Who solved a challenge"
 )]
 pub enum CtfCommand {
     /// Manage CTF authentication
@@ -22,7 +22,10 @@ pub enum CtfCommand {
     /// Set the active CTF event (persists to config)
     Use {
         /// Event ID to set as active
-        event_id: u64,
+        event_id: Option<u64>,
+        /// Clear the active event
+        #[arg(long)]
+        clear: bool,
     },
     /// List CTF events
     Events {
@@ -50,24 +53,27 @@ pub enum CtfCommand {
     },
     /// Download challenge files
     Download {
-        /// Event ID (uses active event if omitted)
-        event_id: Option<u64>,
         /// Challenge ID
         challenge_id: u64,
+        /// Event ID (uses active event if omitted)
+        #[arg(short = 'e', long = "event")]
+        event_id: Option<u64>,
     },
     /// Start a challenge container
     Start {
-        /// Event ID (uses active event if omitted)
-        event_id: Option<u64>,
         /// Challenge ID
         challenge_id: u64,
+        /// Event ID (uses active event if omitted)
+        #[arg(short = 'e', long = "event")]
+        event_id: Option<u64>,
     },
     /// Stop a challenge container
     Stop {
-        /// Event ID (uses active event if omitted)
-        event_id: Option<u64>,
         /// Challenge ID
         challenge_id: u64,
+        /// Event ID (uses active event if omitted)
+        #[arg(short = 'e', long = "event")]
+        event_id: Option<u64>,
     },
     /// Show event scoreboard
     Scoreboard {
@@ -112,7 +118,25 @@ pub async fn handle(
 ) -> anyhow::Result<()> {
     match cmd {
         CtfCommand::Auth { command } => handle_auth(command, format, cache).await,
-        CtfCommand::Use { event_id } => use_event(event_id, cache).await,
+        CtfCommand::Use { event_id, clear } => {
+            if clear {
+                crate::config::save_ctf_event(None)?;
+                crate::output::print_message("Active event cleared.");
+                Ok(())
+            } else if let Some(id) = event_id {
+                use_event(id, cache).await
+            } else {
+                match crate::config::read_ctf_event() {
+                    Some(id) => {
+                        crate::output::print_message(&format!("Active event: {id}"));
+                        Ok(())
+                    }
+                    None => anyhow::bail!(
+                        "No active event set. Usage: htb ctf use <event_id> or --clear"
+                    ),
+                }
+            }
+        }
         CtfCommand::Events { all } => events(all, format, cache).await,
         CtfCommand::Info { slug } => info(&slug, format, cache).await,
         CtfCommand::Challenges {

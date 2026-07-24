@@ -228,13 +228,14 @@ mod tests {
             vpn_server: Some(1),
             no_color: true,
             cache: CacheConfig::default(),
-            ctf_event: None,
+            ctf_event: Some(1434),
         };
         let serialized = toml::to_string(&config).unwrap();
         let deserialized: HtbConfig = toml::from_str(&serialized).unwrap();
         assert_eq!(deserialized.output, "json");
         assert_eq!(deserialized.vpn_server, Some(1));
         assert!(deserialized.no_color);
+        assert_eq!(deserialized.ctf_event, Some(1434));
     }
 
     #[test]
