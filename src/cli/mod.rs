@@ -13,6 +13,7 @@ pub mod vpn;
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
+use clap_complete::Shell;
 
 #[derive(Parser)]
 #[command(
@@ -98,5 +99,10 @@ pub enum Command {
     Cache {
         #[command(subcommand)]
         command: cache::CacheCommand,
+    },
+    /// Generate shell completions
+    Completions {
+        /// Shell to generate completions for
+        shell: Shell,
     },
 }

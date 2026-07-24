@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use tracing_subscriber::EnvFilter;
 
 use htb_cli::cache;
@@ -119,6 +119,11 @@ async fn run(
 
         Command::Cache { command } => {
             cli::cache::handle(command, &app_cache);
+            Ok(())
+        }
+
+        Command::Completions { shell } => {
+            clap_complete::generate(shell, &mut Cli::command(), "htb", &mut std::io::stdout());
             Ok(())
         }
     }
