@@ -260,6 +260,7 @@ impl HtbClient {
         if path.contains("/flags/own")
             || path.contains("/challenges/containers/start")
             || path.contains("/challenges/containers/stop")
+            || path.contains("/progress")
         {
             cache.invalidate_pattern("ctf.hackthebox.com_api_ctfs_");
             cache.invalidate_pattern("ctf.hackthebox.com_api_challenges_");
@@ -429,6 +430,10 @@ impl HtbClient {
     }
 
     fn ttl_for_ctf_path(&self, path: &str) -> Option<Duration> {
+        // Mutations disguised as GETs
+        if path.contains("/associate/") || path.contains("/disassociate/") {
+            return None;
+        }
         // Reference data (30 min)
         if path.starts_with("/api/public/challenge-categories") {
             return Some(Duration::from_secs(1800));

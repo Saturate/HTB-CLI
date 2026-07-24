@@ -3,9 +3,14 @@ use serde_json::json;
 use crate::error::HtbError;
 use crate::models::ctf::{
     CtfChallengeSolve, CtfEvent, CtfEventData, CtfEventDetail, CtfFlagResult, CtfMenu,
-    CtfScoreboard, CtfSolve, CtfUserProfile,
+    CtfScoreboard, CtfSolve, CtfTeamOverview, CtfUserProfile,
 };
 use crate::models::ActionResponse;
+
+#[derive(serde::Serialize)]
+struct ProgressBody {
+    status: Option<String>,
+}
 
 use super::HtbClient;
 
@@ -84,6 +89,49 @@ impl CtfApi<'_> {
     ) -> Result<Vec<CtfChallengeSolve>, HtbError> {
         self.0
             .get(&format!("/api/challenges/{challenge_id}/solves"))
+            .await
+    }
+
+    pub async fn team_overview(&self, team_id: u64) -> Result<CtfTeamOverview, HtbError> {
+        self.0.get(&format!("/api/teams/{team_id}/overview")).await
+    }
+
+    pub async fn associate_challenge(
+        &self,
+        challenge_id: u64,
+        user_id: u64,
+    ) -> Result<ActionResponse, HtbError> {
+        self.0
+            .get(&format!(
+                "/api/challenges/{challenge_id}/associate/{user_id}"
+            ))
+            .await
+    }
+
+    pub async fn disassociate_challenge(
+        &self,
+        challenge_id: u64,
+        user_id: u64,
+    ) -> Result<ActionResponse, HtbError> {
+        self.0
+            .get(&format!(
+                "/api/challenges/{challenge_id}/disassociate/{user_id}"
+            ))
+            .await
+    }
+
+    pub async fn set_challenge_progress(
+        &self,
+        challenge_id: u64,
+        status: Option<&str>,
+    ) -> Result<(), HtbError> {
+        self.0
+            .post_no_content(
+                &format!("/api/challenges/{challenge_id}/progress"),
+                &ProgressBody {
+                    status: status.map(|s| s.to_string()),
+                },
+            )
             .await
     }
 }

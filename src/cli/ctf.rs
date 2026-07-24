@@ -11,7 +11,7 @@ const CTF_BASE_URL: &str = "https://ctf.hackthebox.com";
 
 #[derive(Subcommand)]
 #[command(
-    after_help = "Workflow:\n  1. htb ctf auth login                  Authenticate (separate token from labs)\n  2. htb ctf events                      Find an event\n  3. htb ctf use 1434                    Set active event (sticky)\n  4. htb ctf challenges                  Browse challenges\n  5. htb ctf start 31855                 Spin up the container\n  6. htb ctf download 31855              Grab challenge files\n     ... hack ...\n  7. htb ctf submit 31855 'HTB{flag}'    Submit your flag\n  8. htb ctf stop 31855                  Clean up the container\n\nOverride active event:\n  htb ctf start -e 1434 31855           Explicit event for one command\n  htb ctf use --clear                    Remove sticky event\n\nOther:\n  htb ctf info ctf-try-out-1434          Event details (by slug)\n  htb ctf scoreboard                     Team rankings\n  htb ctf solves                         Recent solves feed\n  htb ctf challenge-solves 31855         Who solved a challenge"
+    after_help = "Workflow:\n  1. htb ctf auth login                  Authenticate (separate token from labs)\n  2. htb ctf events                      Find an event\n  3. htb ctf use 1434                    Set active event (sticky)\n  4. htb ctf challenges                  Browse challenges\n  5. htb ctf associate 31855             Assign yourself to challenge\n  6. htb ctf progress 31855              Mark as in progress\n  7. htb ctf start 31855                 Spin up the container\n  8. htb ctf download 31855              Grab challenge files\n     ... hack ...\n  9. htb ctf submit 31855 'HTB{flag}'    Submit your flag\n 10. htb ctf stop 31855                  Clean up the container\n\nTeam coordination:\n  htb ctf team                           List team members\n  htb ctf associate 31855                Assign yourself\n  htb ctf associate 31855 -u 693962      Assign a teammate\n  htb ctf disassociate 31855             Unassign yourself\n  htb ctf progress 31855                 Mark in progress\n  htb ctf progress 31855 --clear         Clear progress\n\nOverride active event:\n  htb ctf start -e 1434 31855           Explicit event for one command\n  htb ctf use --clear                    Remove sticky event\n\nOther:\n  htb ctf info ctf-try-out-1434          Event details (by slug)\n  htb ctf scoreboard                     Team rankings\n  htb ctf solves                         Recent solves feed\n  htb ctf challenge-solves 31855         Who solved a challenge"
 )]
 pub enum CtfCommand {
     /// Manage CTF authentication
@@ -90,6 +90,58 @@ pub enum CtfCommand {
         /// Challenge ID
         challenge_id: u64,
     },
+    /// List team members for the active event
+    Team {
+        /// Event ID (uses active event if omitted)
+        event_id: Option<u64>,
+    },
+    /// Assign a member to a challenge (defaults to yourself)
+    Associate {
+        /// Challenge ID
+        challenge_id: u64,
+        /// User ID (defaults to yourself)
+        #[arg(short, long)]
+        user: Option<u64>,
+    },
+    /// Unassign a member from a challenge (defaults to yourself)
+    Disassociate {
+        /// Challenge ID
+        challenge_id: u64,
+        /// User ID (defaults to yourself)
+        #[arg(short, long)]
+        user: Option<u64>,
+    },
+    /// Set challenge progress status
+    Progress {
+        /// Challenge ID
+        challenge_id: u64,
+        /// Status to set [possible values: in-progress, need-help, not-started]
+        #[arg(value_enum, default_value = "in-progress")]
+        status: ProgressStatus,
+        /// Clear the progress status
+        #[arg(long)]
+        clear: bool,
+    },
+}
+
+#[derive(Clone, clap::ValueEnum)]
+pub enum ProgressStatus {
+    #[value(name = "in-progress")]
+    InProgress,
+    #[value(name = "need-help")]
+    NeedHelp,
+    #[value(name = "not-started")]
+    NotStarted,
+}
+
+impl ProgressStatus {
+    fn api_value(&self) -> &'static str {
+        match self {
+            Self::InProgress => "in progress",
+            Self::NeedHelp => "need help",
+            Self::NotStarted => "not started",
+        }
+    }
 }
 
 #[derive(Subcommand)]
@@ -179,6 +231,19 @@ pub async fn handle(
         CtfCommand::ChallengeSolves { challenge_id } => {
             challenge_solves(challenge_id, format, cache).await
         }
+        CtfCommand::Team { event_id } => {
+            let eid = resolve_event_id(event_id)?;
+            team(eid, format, cache).await
+        }
+        CtfCommand::Associate { challenge_id, user } => associate(challenge_id, user, cache).await,
+        CtfCommand::Disassociate { challenge_id, user } => {
+            disassociate(challenge_id, user, cache).await
+        }
+        CtfCommand::Progress {
+            challenge_id,
+            status,
+            clear,
+        } => progress(challenge_id, status, clear, cache).await,
     }
 }
 
@@ -548,5 +613,80 @@ async fn challenge_solves(
     let client = ctf_client(cache)?;
     let solves = client.ctf().challenge_solves(challenge_id).await?;
     crate::output::print_list(&solves, format);
+    Ok(())
+}
+
+async fn team(event_id: u64, format: OutputFormat, cache: &Arc<Cache>) -> anyhow::Result<()> {
+    let client = ctf_client(cache)?;
+    let data = client.ctf().event_data(event_id).await?;
+    let team = data
+        .participating_team
+        .ok_or_else(|| anyhow::anyhow!("Not participating in this event as a team"))?;
+    let overview = client.ctf().team_overview(team.id).await?;
+
+    if format != OutputFormat::Json {
+        crate::output::print_message(&format!("Team: {}", overview.name));
+    }
+    crate::output::print_list(&overview.members, format);
+    Ok(())
+}
+
+async fn associate(
+    challenge_id: u64,
+    user_id: Option<u64>,
+    cache: &Arc<Cache>,
+) -> anyhow::Result<()> {
+    let client = ctf_client(cache)?;
+    let uid = match user_id {
+        Some(id) => id,
+        None => client.ctf().profile().await?.id,
+    };
+    let resp = client.ctf().associate_challenge(challenge_id, uid).await?;
+    cache.invalidate_pattern("ctf.hackthebox.com_api_ctfs_");
+    crate::output::print_message(&resp.message);
+    Ok(())
+}
+
+async fn disassociate(
+    challenge_id: u64,
+    user_id: Option<u64>,
+    cache: &Arc<Cache>,
+) -> anyhow::Result<()> {
+    let client = ctf_client(cache)?;
+    let uid = match user_id {
+        Some(id) => id,
+        None => client.ctf().profile().await?.id,
+    };
+    let resp = client
+        .ctf()
+        .disassociate_challenge(challenge_id, uid)
+        .await?;
+    cache.invalidate_pattern("ctf.hackthebox.com_api_ctfs_");
+    crate::output::print_message(&resp.message);
+    Ok(())
+}
+
+async fn progress(
+    challenge_id: u64,
+    status: ProgressStatus,
+    clear: bool,
+    cache: &Arc<Cache>,
+) -> anyhow::Result<()> {
+    let client = ctf_client(cache)?;
+    let api_status = if clear {
+        None
+    } else {
+        Some(status.api_value())
+    };
+    client
+        .ctf()
+        .set_challenge_progress(challenge_id, api_status)
+        .await?;
+    cache.invalidate_pattern("ctf.hackthebox.com_api_ctfs_");
+    if clear {
+        crate::output::print_message("Progress cleared.");
+    } else {
+        crate::output::print_message(&format!("Challenge marked as \"{}\".", status.api_value()));
+    }
     Ok(())
 }
