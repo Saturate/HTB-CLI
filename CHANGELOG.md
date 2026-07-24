@@ -1,4 +1,25 @@
 # Changelog
+## 0.1.9 (2026-07-24)
+
+### Features
+
+#### Shell completions generation
+
+Added `htb completions <shell>` to generate shell completions for bash, zsh,
+and fish via `clap_complete`.
+
+### Fixes
+
+#### Parse HTML error responses into friendly messages
+
+When the API returns HTML instead of JSON on errors (e.g. a 403 from nginx),
+the CLI now extracts the `<title>` text instead of dumping raw HTML.
+
+#### Show --mcp-stdio in help output
+
+Moved `--mcp-stdio` from a pre-parse arg check to a proper clap flag so it
+appears in `htb --help`.
+
 ## 0.1.8 (2026-07-23)
 
 ### Fixes
