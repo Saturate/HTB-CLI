@@ -11,13 +11,21 @@ const CTF_BASE_URL: &str = "https://ctf.hackthebox.com";
 
 #[derive(Subcommand)]
 #[command(
-    after_help = "Workflow:\n  1. htb ctf auth login                  Authenticate (separate token from labs)\n  2. htb ctf events                      Find an event\n  3. htb ctf challenges 1434             Browse challenges\n  4. htb ctf start 1434 31855            Spin up the container\n  5. htb ctf download 1434 31855         Grab challenge files\n     ... hack ...\n  6. htb ctf submit 31855 'HTB{flag}'    Submit your flag\n  7. htb ctf stop 1434 31855             Clean up the container\n\nOther:\n  htb ctf info ctf-try-out-1434          Event details (by slug)\n  htb ctf scoreboard 1434                Team rankings\n  htb ctf solves 1434                    Recent solves feed\n  htb ctf challenge-solves 31855         Who solved a challenge"
+    after_help = "Workflow:\n  1. htb ctf auth login                  Authenticate (separate token from labs)\n  2. htb ctf events                      Find an event\n  3. htb ctf use 1434                    Set active event (sticky)\n  4. htb ctf challenges                  Browse challenges\n  5. htb ctf start 31855                 Spin up the container\n  6. htb ctf download 31855              Grab challenge files\n     ... hack ...\n  7. htb ctf submit 31855 'HTB{flag}'    Submit your flag\n  8. htb ctf stop 31855                  Clean up the container\n\nOverride active event:\n  htb ctf start -e 1434 31855           Explicit event for one command\n  htb ctf use --clear                    Remove sticky event\n\nOther:\n  htb ctf info ctf-try-out-1434          Event details (by slug)\n  htb ctf scoreboard                     Team rankings\n  htb ctf solves                         Recent solves feed\n  htb ctf challenge-solves 31855         Who solved a challenge"
 )]
 pub enum CtfCommand {
     /// Manage CTF authentication
     Auth {
         #[command(subcommand)]
         command: CtfAuthCommand,
+    },
+    /// Set the active CTF event (persists to config)
+    Use {
+        /// Event ID to set as active
+        event_id: Option<u64>,
+        /// Clear the active event
+        #[arg(long)]
+        clear: bool,
     },
     /// List CTF events
     Events {
@@ -31,8 +39,8 @@ pub enum CtfCommand {
     },
     /// List challenges in a CTF event
     Challenges {
-        /// Event ID
-        event_id: u64,
+        /// Event ID (uses active event if omitted)
+        event_id: Option<u64>,
         #[arg(long, help = "Filter by difficulty")]
         difficulty: Option<String>,
     },
@@ -45,34 +53,37 @@ pub enum CtfCommand {
     },
     /// Download challenge files
     Download {
-        /// Event ID (for validation)
-        event_id: u64,
         /// Challenge ID
         challenge_id: u64,
+        /// Event ID (uses active event if omitted)
+        #[arg(short = 'e', long = "event")]
+        event_id: Option<u64>,
     },
     /// Start a challenge container
     Start {
-        /// Event ID (for status polling)
-        event_id: u64,
         /// Challenge ID
         challenge_id: u64,
+        /// Event ID (uses active event if omitted)
+        #[arg(short = 'e', long = "event")]
+        event_id: Option<u64>,
     },
     /// Stop a challenge container
     Stop {
-        /// Event ID
-        event_id: u64,
         /// Challenge ID
         challenge_id: u64,
+        /// Event ID (uses active event if omitted)
+        #[arg(short = 'e', long = "event")]
+        event_id: Option<u64>,
     },
     /// Show event scoreboard
     Scoreboard {
-        /// Event ID
-        event_id: u64,
+        /// Event ID (uses active event if omitted)
+        event_id: Option<u64>,
     },
     /// Show recent solves for an event
     Solves {
-        /// Event ID
-        event_id: u64,
+        /// Event ID (uses active event if omitted)
+        event_id: Option<u64>,
     },
     /// Show solves for a specific challenge
     ChallengeSolves {
@@ -91,6 +102,15 @@ pub enum CtfAuthCommand {
     Logout,
 }
 
+fn resolve_event_id(explicit: Option<u64>) -> anyhow::Result<u64> {
+    match explicit.or_else(crate::config::read_ctf_event) {
+        Some(id) => Ok(id),
+        None => anyhow::bail!(
+            "No event ID provided and no active event set. Run: htb ctf use <event_id>"
+        ),
+    }
+}
+
 pub async fn handle(
     cmd: CtfCommand,
     format: OutputFormat,
@@ -98,27 +118,64 @@ pub async fn handle(
 ) -> anyhow::Result<()> {
     match cmd {
         CtfCommand::Auth { command } => handle_auth(command, format, cache).await,
+        CtfCommand::Use { event_id, clear } => {
+            if clear {
+                crate::config::save_ctf_event(None)?;
+                crate::output::print_message("Active event cleared.");
+                Ok(())
+            } else if let Some(id) = event_id {
+                use_event(id, cache).await
+            } else {
+                match crate::config::read_ctf_event() {
+                    Some(id) => {
+                        crate::output::print_message(&format!("Active event: {id}"));
+                        Ok(())
+                    }
+                    None => anyhow::bail!(
+                        "No active event set. Usage: htb ctf use <event_id> or --clear"
+                    ),
+                }
+            }
+        }
         CtfCommand::Events { all } => events(all, format, cache).await,
         CtfCommand::Info { slug } => info(&slug, format, cache).await,
         CtfCommand::Challenges {
             event_id,
             difficulty,
-        } => challenges(event_id, difficulty.as_deref(), format, cache).await,
+        } => {
+            let eid = resolve_event_id(event_id)?;
+            challenges(eid, difficulty.as_deref(), format, cache).await
+        }
         CtfCommand::Submit { challenge_id, flag } => submit(challenge_id, &flag, cache).await,
         CtfCommand::Download {
             event_id,
             challenge_id,
-        } => download(event_id, challenge_id, cache).await,
+        } => {
+            let eid = resolve_event_id(event_id)?;
+            download(eid, challenge_id, cache).await
+        }
         CtfCommand::Start {
             event_id,
             challenge_id,
-        } => start(event_id, challenge_id, cache).await,
+        } => {
+            let eid = resolve_event_id(event_id)?;
+            start(eid, challenge_id, cache).await
+        }
         CtfCommand::Stop {
             event_id,
             challenge_id,
-        } => stop(event_id, challenge_id, cache).await,
-        CtfCommand::Scoreboard { event_id } => scoreboard(event_id, format, cache).await,
-        CtfCommand::Solves { event_id } => solves(event_id, format, cache).await,
+        } => {
+            let eid = resolve_event_id(event_id)?;
+            stop(eid, challenge_id, cache).await
+        }
+        CtfCommand::Scoreboard { event_id } => {
+            let eid = resolve_event_id(event_id)?;
+            scoreboard(eid, format, cache).await
+        }
+        CtfCommand::Solves { event_id } => {
+            let eid = resolve_event_id(event_id)?;
+            solves(eid, format, cache).await
+        }
         CtfCommand::ChallengeSolves { challenge_id } => {
             challenge_solves(challenge_id, format, cache).await
         }
@@ -144,6 +201,23 @@ async fn handle_auth(
         CtfAuthCommand::Status => status(format).await,
         CtfAuthCommand::Logout => logout(cache),
     }
+}
+
+async fn use_event(event_id: u64, cache: &Arc<Cache>) -> anyhow::Result<()> {
+    let client = ctf_client(cache)?;
+    let events = client.ctf().events().await?;
+    let event = events
+        .iter()
+        .find(|e| e.id == event_id)
+        .ok_or_else(|| anyhow::anyhow!("Event {event_id} not found"))?;
+
+    crate::config::save_ctf_event(Some(event_id))?;
+    crate::output::print_message(&format!(
+        "Active event: {} ({})",
+        event.name,
+        event.status.as_deref().unwrap_or("unknown")
+    ));
+    Ok(())
 }
 
 async fn login(cache: &Cache) -> anyhow::Result<()> {
