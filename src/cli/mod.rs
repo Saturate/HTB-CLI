@@ -24,7 +24,10 @@ use clap::{Parser, Subcommand};
 )]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Command,
+    pub command: Option<Command>,
+
+    #[arg(long, help = "Run as MCP server over stdin/stdout")]
+    pub mcp_stdio: bool,
 
     #[arg(long, global = true, help = "Output as JSON")]
     pub json: bool,
