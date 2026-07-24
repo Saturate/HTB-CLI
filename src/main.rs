@@ -9,8 +9,9 @@ use htb_cli::output::OutputFormat;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    // Check for --mcp-stdio before clap parsing (it's a mode switch, not a subcommand)
-    if std::env::args().any(|a| a == "--mcp-stdio") {
+    let cli = Cli::parse();
+
+    if cli.mcp_stdio {
         if let Err(e) = mcp::run_stdio().await {
             eprintln!("MCP error: {e}");
             std::process::exit(1);
@@ -18,7 +19,10 @@ async fn main() {
         return;
     }
 
-    let cli = Cli::parse();
+    let Some(command) = cli.command else {
+        Cli::parse_from(["htb", "--help"]);
+        return;
+    };
 
     let filter = if cli.verbose {
         EnvFilter::new("debug")
@@ -61,7 +65,7 @@ async fn main() {
     let cache_enabled = cfg.cache.enabled && !cli.no_cache;
     let app_cache = std::sync::Arc::new(cache::Cache::new(config::cache_dir(), cache_enabled));
 
-    if let Err(e) = run(cli.command, format, app_cache).await {
+    if let Err(e) = run(command, format, app_cache).await {
         eprintln!("Error: {e}");
         std::process::exit(1);
     }
