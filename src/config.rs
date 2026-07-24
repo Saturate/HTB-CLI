@@ -16,6 +16,9 @@ pub struct HtbConfig {
 
     #[serde(default)]
     pub cache: CacheConfig,
+
+    #[serde(default)]
+    pub ctf_event: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -47,6 +50,7 @@ impl Default for HtbConfig {
             vpn_server: None,
             no_color: false,
             cache: CacheConfig::default(),
+            ctf_event: None,
         }
     }
 }
@@ -181,6 +185,30 @@ pub fn remove_ctf_token() -> anyhow::Result<()> {
     Ok(())
 }
 
+pub fn read_ctf_event() -> Option<u64> {
+    let path = config_dir().ok()?.join("config.toml");
+    let contents = fs::read_to_string(path).ok()?;
+    let config: HtbConfig = toml::from_str(&contents).ok()?;
+    config.ctf_event
+}
+
+pub fn save_ctf_event(event_id: Option<u64>) -> anyhow::Result<()> {
+    let dir = config_dir()?;
+    fs::create_dir_all(&dir)?;
+    let path = dir.join("config.toml");
+
+    let mut config: HtbConfig = if path.exists() {
+        let contents = fs::read_to_string(&path)?;
+        toml::from_str(&contents)?
+    } else {
+        HtbConfig::default()
+    };
+
+    config.ctf_event = event_id;
+    fs::write(&path, toml::to_string_pretty(&config)?)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -200,6 +228,7 @@ mod tests {
             vpn_server: Some(1),
             no_color: true,
             cache: CacheConfig::default(),
+            ctf_event: None,
         };
         let serialized = toml::to_string(&config).unwrap();
         let deserialized: HtbConfig = toml::from_str(&serialized).unwrap();
