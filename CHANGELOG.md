@@ -1,4 +1,14 @@
 # Changelog
+## 0.1.10 (2026-07-24)
+
+### Features
+
+#### Sticky CTF event selection
+
+Added `htb ctf use <event_id>` to persist the active CTF event to config.
+All event-scoped commands now accept the event ID as optional, falling back
+to the stored value.
+
 ## 0.1.9 (2026-07-24)
 
 ### Features
