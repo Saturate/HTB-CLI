@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use htb_cli::cache::Cache;
+use htb_cli::error::HtbError;
 use htb_cli::models::ctf::{CtfEvent, CtfEventData, CtfFlagResult, CtfScoreboard, CtfSolve};
 
 use wiremock::matchers::{method, path};
@@ -129,4 +130,34 @@ async fn get_solves_feed() {
     let solves: Vec<CtfSolve> = client.get("/api/ctfs/solves/1434").await.unwrap();
     assert_eq!(solves.len(), 2);
     assert_eq!(solves[0].challenge_name.as_deref(), Some("LootStash"));
+}
+
+#[tokio::test]
+async fn html_403_gives_friendly_error() {
+    let server = MockServer::start().await;
+    let html = r#"<!DOCTYPE html>
+<html><head><title>403 Forbidden</title></head>
+<body><h1>403 Forbidden</h1></body></html>"#;
+
+    Mock::given(method("POST"))
+        .and(path("/api/challenges/containers/start"))
+        .respond_with(ResponseTemplate::new(403).set_body_string(html))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let cache = Arc::new(temp_cache("html-403"));
+    let client =
+        htb_cli::api::HtbClient::with_base_url_and_cache("test-token".into(), server.uri(), cache);
+
+    let err = client.ctf().container_start(12345).await.unwrap_err();
+
+    match err {
+        HtbError::Api { status, message } => {
+            assert_eq!(status, 403);
+            assert_eq!(message, "403 Forbidden");
+            assert!(!message.contains('<'));
+        }
+        other => panic!("expected HtbError::Api, got: {other:?}"),
+    }
 }

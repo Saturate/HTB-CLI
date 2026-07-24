@@ -30,6 +30,29 @@ use serde::Serialize;
 use crate::cache::Cache;
 use crate::error::{ApiErrorBody, HtbError};
 
+fn extract_error_message(body: &str, status: u16) -> String {
+    if let Ok(e) = serde_json::from_str::<ApiErrorBody>(body) {
+        return e.message;
+    }
+
+    let trimmed = body.trim_start();
+    if trimmed.starts_with("<!") || trimmed.starts_with("<html") || trimmed.starts_with("<HTML") {
+        let lower = trimmed.to_lowercase();
+        if let Some(start) = lower.find("<title>") {
+            let after = &trimmed[start + 7..];
+            if let Some(end) = after.to_lowercase().find("</title>") {
+                let title = after[..end].trim();
+                if !title.is_empty() {
+                    return title.to_string();
+                }
+            }
+        }
+        return format!("Server returned an error (HTTP {status})");
+    }
+
+    body.to_string()
+}
+
 const BASE_URL: &str = "https://labs.hackthebox.com";
 const USER_AGENT: &str = concat!("htb-cli/", env!("CARGO_PKG_VERSION"));
 
@@ -203,12 +226,9 @@ impl HtbClient {
         }
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
-            let message = serde_json::from_str::<ApiErrorBody>(&body)
-                .map(|e| e.message)
-                .unwrap_or(body);
             return Err(HtbError::Api {
                 status: status.as_u16(),
-                message,
+                message: extract_error_message(&body, status.as_u16()),
             });
         }
 
@@ -280,7 +300,7 @@ impl HtbClient {
             let body = resp.text().await.unwrap_or_default();
             return Err(HtbError::Api {
                 status: status.as_u16(),
-                message: body,
+                message: extract_error_message(&body, status.as_u16()),
             });
         }
 
@@ -311,13 +331,9 @@ impl HtbClient {
 
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
-            let message = serde_json::from_str::<ApiErrorBody>(&body)
-                .map(|e| e.message)
-                .unwrap_or(body);
-
             return Err(HtbError::Api {
                 status: status.as_u16(),
-                message,
+                message: extract_error_message(&body, status.as_u16()),
             });
         }
 
@@ -477,5 +493,34 @@ mod tests {
         state.update(&headers);
         assert_eq!(state.limit(), u32::MAX);
         assert_eq!(state.remaining(), u32::MAX);
+    }
+
+    #[test]
+    fn extract_error_message_json() {
+        let body = r#"{"message":"Incorrect flag"}"#;
+        assert_eq!(extract_error_message(body, 403), "Incorrect flag");
+    }
+
+    #[test]
+    fn extract_error_message_html_with_title() {
+        let body = r#"<!DOCTYPE html>
+<html><head><title>403 Forbidden</title></head>
+<body><h1>403 Forbidden</h1></body></html>"#;
+        assert_eq!(extract_error_message(body, 403), "403 Forbidden");
+    }
+
+    #[test]
+    fn extract_error_message_html_no_title() {
+        let body = "<!DOCTYPE html><html><body>error</body></html>";
+        assert_eq!(
+            extract_error_message(body, 403),
+            "Server returned an error (HTTP 403)"
+        );
+    }
+
+    #[test]
+    fn extract_error_message_plain_text() {
+        let body = "something went wrong";
+        assert_eq!(extract_error_message(body, 500), "something went wrong");
     }
 }
