@@ -388,6 +388,44 @@ pub struct CtfFlagResult {
     pub points: Option<u32>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CtfTeamOverview {
+    pub id: u64,
+    pub name: String,
+    #[serde(default)]
+    pub members: Vec<CtfTeamMember>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CtfTeamMember {
+    pub id: u64,
+    pub name: String,
+    #[serde(default)]
+    pub role: Option<String>,
+    #[serde(default)]
+    pub timezone: Option<String>,
+    #[serde(default)]
+    pub flags: Option<u32>,
+    #[serde(default)]
+    pub games: Option<u32>,
+}
+
+impl Tabular for CtfTeamMember {
+    fn headers() -> Vec<&'static str> {
+        vec!["ID", "Name", "Role", "Timezone", "Flags"]
+    }
+
+    fn row(&self) -> Vec<String> {
+        vec![
+            self.id.to_string(),
+            self.name.clone(),
+            self.role.clone().unwrap_or_default(),
+            self.timezone.clone().unwrap_or_default(),
+            self.flags.map(|f| f.to_string()).unwrap_or_default(),
+        ]
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
