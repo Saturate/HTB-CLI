@@ -114,6 +114,11 @@ async fn run(
             cli::pwnbox::handle(&client, command, format).await
         }
 
+        Command::Rankings { command } => {
+            let client = authenticated_client(app_cache)?;
+            cli::rankings::handle(&client, command, format).await
+        }
+
         Command::Ctf { command } => cli::ctf::handle(command, format, &app_cache).await,
 
         Command::Search { query } => {

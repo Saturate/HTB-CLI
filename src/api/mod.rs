@@ -1,6 +1,7 @@
 pub mod challenges;
 pub mod ctf;
 pub mod machines;
+pub mod rankings;
 pub mod search;
 pub mod seasons;
 pub mod sherlocks;
@@ -377,6 +378,10 @@ impl HtbClient {
 
     pub fn sherlocks(&self) -> sherlocks::SherlockApi<'_> {
         sherlocks::SherlockApi(self)
+    }
+
+    pub fn rankings(&self) -> rankings::RankingsApi<'_> {
+        rankings::RankingsApi(self)
     }
 
     pub fn seasons(&self) -> seasons::SeasonApi<'_> {

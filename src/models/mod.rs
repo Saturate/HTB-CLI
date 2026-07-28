@@ -3,6 +3,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 pub mod challenge;
 pub mod ctf;
 pub mod machine;
+pub mod rankings;
 pub mod season;
 pub mod sherlock;
 pub mod user;

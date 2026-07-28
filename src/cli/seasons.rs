@@ -9,6 +9,16 @@ pub enum SeasonCommand {
     List,
     /// Show your rank in the current season
     Rank,
+    /// List machines in a season
+    Machines {
+        /// Season ID
+        id: u32,
+    },
+    /// Show season leaderboard
+    Leaderboard {
+        /// Season ID
+        id: u32,
+    },
 }
 
 pub async fn handle(
@@ -30,6 +40,24 @@ pub async fn handle(
                 output::print_message("No season data found.");
             } else {
                 output::print_list(&ranks, format);
+            }
+        }
+
+        SeasonCommand::Machines { id } => {
+            let machines = client.seasons().machines(id).await?;
+            if machines.is_empty() {
+                output::print_message("No machines found in this season.");
+            } else {
+                output::print_list(&machines, format);
+            }
+        }
+
+        SeasonCommand::Leaderboard { id } => {
+            let entries = client.seasons().leaderboard(id).await?;
+            if entries.is_empty() {
+                output::print_message("No leaderboard data for this season.");
+            } else {
+                output::print_list(&entries, format);
             }
         }
     }

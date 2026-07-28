@@ -1,7 +1,10 @@
 use serde_json::json;
 
 use crate::error::HtbError;
-use crate::models::sherlock::{Sherlock, SherlockCategoriesResponse, SherlockCategory};
+use crate::models::sherlock::{
+    Sherlock, SherlockCategoriesResponse, SherlockCategory, SherlockInfoResponse, SherlockTask,
+    SherlockTasksResponse,
+};
 use crate::models::{ActionResponse, Paginated};
 
 use super::HtbClient;
@@ -25,7 +28,17 @@ impl SherlockApi<'_> {
 
     pub async fn info(&self, slug: &str) -> Result<Sherlock, HtbError> {
         let encoded = super::encode_path(slug);
-        self.0.get(&format!("/api/v4/sherlocks/{encoded}")).await
+        let resp: SherlockInfoResponse =
+            self.0.get(&format!("/api/v4/sherlocks/{encoded}")).await?;
+        Ok(resp.data)
+    }
+
+    pub async fn tasks(&self, sherlock_id: u64) -> Result<Vec<SherlockTask>, HtbError> {
+        let resp: SherlockTasksResponse = self
+            .0
+            .get(&format!("/api/v4/sherlocks/{sherlock_id}/tasks"))
+            .await?;
+        Ok(resp.data)
     }
 
     pub async fn download_link(&self, sherlock_id: u64) -> Result<String, HtbError> {
