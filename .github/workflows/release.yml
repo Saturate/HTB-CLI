@@ -1,17 +1,23 @@
 name: Release
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: true
 
 permissions:
   contents: write
 
 jobs:
-  prepare:
+  release:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.knope.outputs.version }}
-      should_release: ${{ steps.knope.outputs.should_release }}
+      released: ${{ steps.changesetter.outputs.released }}
+      releases: ${{ steps.changesetter.outputs.releases }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         id: app-token
@@ -24,50 +30,23 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
-      - uses: knope-dev/action@19617851f9f13ab2f27a05989c55efb18aca3675 # v2.1.2
-        with:
-          version: 0.23.0
-
-      - name: Prepare release
-        id: knope
-        run: |
-          knope release --dry-run 2>&1 | tee /tmp/knope-output.txt || true
-          VERSION=$(grep -oP '(?:Bumping version to |Would add the following to Cargo\.toml: version = )\K[0-9]+\.[0-9]+\.[0-9]+' /tmp/knope-output.txt || echo "")
-          if [ -n "$VERSION" ]; then
-            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-            echo "should_release=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_release=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Configure git identity
-        if: steps.knope.outputs.should_release == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Prepare release with knope
-        if: steps.knope.outputs.should_release == 'true'
-        run: knope release
-
-      - name: Commit, tag, push, and create release
-        if: steps.knope.outputs.should_release == 'true'
-        run: |
-          git add -A
-          git commit -m "chore: prepare release v${{ steps.knope.outputs.version }}"
-          git tag "v${{ steps.knope.outputs.version }}"
-          git push origin main --tags
-          # Extract only this version's changelog section
-          sed -n '/^## ${{ steps.knope.outputs.version }}/,/^## [0-9]/p' CHANGELOG.md | sed '$d' > /tmp/release-notes.md
-          gh release create "v${{ steps.knope.outputs.version }}" \
-            --title "v${{ steps.knope.outputs.version }}" \
-            --notes-file /tmp/release-notes.md
+      - uses: saturate/changesetter/actions/release@v1
+        id: changesetter
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Extract version
+        id: version
+        if: steps.changesetter.outputs.released == 'true'
+        env:
+          RELEASES_JSON: ${{ steps.changesetter.outputs.releases }}
+        run: |
+          VERSION=$(echo "$RELEASES_JSON" | jq -r '.[0].version')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
   build:
-    needs: prepare
-    if: needs.prepare.outputs.should_release == 'true'
+    needs: release
+    if: needs.release.outputs.released == 'true'
     strategy:
       matrix:
         include:
@@ -98,7 +77,7 @@ jobs:
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: v${{ needs.prepare.outputs.version }}
+          ref: v${{ needs.release.outputs.version }}
 
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
         with:
@@ -121,22 +100,21 @@ jobs:
         run: |
           cd target/${{ matrix.target }}/release
           tar czf ../../../${{ matrix.archive }} ${{ matrix.binary }}
-          cd ../../..
 
       - name: Upload to release
         run: |
-          gh release upload v${{ needs.prepare.outputs.version }} ${{ matrix.archive }}
+          gh release upload "v${{ needs.release.outputs.version }}" "${{ matrix.archive }}" --clobber
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
   publish:
-    needs: [prepare, build]
-    if: needs.prepare.outputs.should_release == 'true'
+    needs: [release, build]
+    if: needs.release.outputs.released == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: v${{ needs.prepare.outputs.version }}
+          ref: v${{ needs.release.outputs.version }}
 
       - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
         with:

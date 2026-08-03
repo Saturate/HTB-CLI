@@ -34,9 +34,11 @@ default: patch
 What changed and why.
 ```
 
-Use `patch` for fixes, `minor` for new features. The package name is always `default`. [Knope](https://knope.tech) consumes these at release time to bump the version and generate the changelog.
+Use `patch` for fixes, `minor` for new features. The package name is always `default`. [changesetter](https://github.com/Saturate/changesetter) consumes these at release time to bump the version and generate the changelog.
 
-CI will block the PR if the changeset is missing (the "Require changes to be documented" check).
+For internal changes that don't affect users (CI, tooling, docs), use `none` instead of `patch`/`minor`.
+
+CI will block the PR if the changeset is missing.
 
 ## Commits
 
