@@ -4,8 +4,6 @@ use crate::output::Tabular;
 
 #[derive(Debug, Deserialize)]
 pub struct RankingsUsersResponse {
-    #[allow(dead_code)]
-    pub status: bool,
     pub data: Vec<RankingUserEntry>,
 }
 
@@ -79,7 +77,6 @@ mod tests {
     fn deserialize_rankings_users() {
         let json = include_str!("../../tests/fixtures/rankings-users.json");
         let resp: RankingsUsersResponse = serde_json::from_str(json).unwrap();
-        assert!(resp.status);
         assert_eq!(resp.data.len(), 3);
         assert_eq!(resp.data[0].name, "topUser");
         assert_eq!(resp.data[0].rank, 1);
