@@ -13,6 +13,11 @@ pub enum UserCommand {
         /// Username or user ID
         user: String,
     },
+    /// Show recent activity (owns, solves)
+    Activity {
+        /// Username or user ID (defaults to you)
+        user: Option<String>,
+    },
 }
 
 pub async fn handle(
@@ -73,6 +78,25 @@ pub async fn handle(
                 ("Country", profile.country_name.clone().unwrap_or_default()),
             ];
             output::print_detail(&profile, format, &fields);
+        }
+        UserCommand::Activity { user } => {
+            let user_id = match user {
+                Some(u) => match u.parse::<u64>() {
+                    Ok(id) => id,
+                    Err(_) => {
+                        let results = client.search().fetch(&u).await?;
+                        resolve_user_id(&results, &u)
+                            .ok_or_else(|| anyhow::anyhow!("User '{u}' not found."))?
+                    }
+                },
+                None => client.user().current().await?.id,
+            };
+            let activity = client.user().activity(user_id).await?;
+            if activity.is_empty() {
+                output::print_message("No recent activity.");
+            } else {
+                output::print_list(&activity, format);
+            }
         }
     }
     Ok(())

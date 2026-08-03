@@ -1,5 +1,8 @@
 use crate::error::HtbError;
-use crate::models::user::{UserInfo, UserInfoResponse, UserProfile, UserProfileResponse};
+use crate::models::user::{
+    ActivityEntry, UserActivityResponse, UserInfo, UserInfoResponse, UserProfile,
+    UserProfileResponse,
+};
 
 use super::HtbClient;
 
@@ -17,5 +20,13 @@ impl UserApi<'_> {
             .get(&format!("/api/v4/user/profile/basic/{user_id}"))
             .await?;
         Ok(resp.profile)
+    }
+
+    pub async fn activity(&self, user_id: u64) -> Result<Vec<ActivityEntry>, HtbError> {
+        let resp: UserActivityResponse = self
+            .0
+            .get(&format!("/api/v5/user/profile/activity/{user_id}"))
+            .await?;
+        Ok(resp.data)
     }
 }
