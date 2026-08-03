@@ -2,6 +2,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::output::Tabular;
 
+#[derive(Debug, Deserialize)]
+pub struct SherlockInfoResponse {
+    pub data: Sherlock,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Sherlock {
     pub id: u64,
@@ -84,6 +89,38 @@ impl Tabular for SherlockCategory {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct SherlockTask {
+    pub id: u64,
+    pub title: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub completed: bool,
+    #[serde(default)]
+    pub masked_flag: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SherlockTasksResponse {
+    pub data: Vec<SherlockTask>,
+}
+
+impl Tabular for SherlockTask {
+    fn headers() -> Vec<&'static str> {
+        vec!["ID", "Title", "Completed", "Flag Hint"]
+    }
+
+    fn row(&self) -> Vec<String> {
+        vec![
+            self.id.to_string(),
+            self.title.clone(),
+            if self.completed { "✓" } else { "" }.to_string(),
+            self.masked_flag.clone().unwrap_or_default(),
+        ]
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -96,6 +133,16 @@ mod tests {
         assert!(!result.data.is_empty());
         assert_eq!(result.data[0].name, "Brutus");
         assert_eq!(result.data[0].category_name.as_deref(), Some("DFIR"));
+    }
+
+    #[test]
+    fn deserialize_sherlock_tasks() {
+        let json = include_str!("../../tests/fixtures/sherlock-tasks.json");
+        let resp: SherlockTasksResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(resp.data.len(), 3);
+        assert_eq!(resp.data[0].title, "Identify the malicious process");
+        assert!(resp.data[0].completed);
+        assert!(!resp.data[1].completed);
     }
 
     #[test]

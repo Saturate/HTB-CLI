@@ -24,6 +24,11 @@ pub enum SherlockCommand {
         /// Sherlock slug
         slug: String,
     },
+    /// List tasks for a Sherlock
+    Tasks {
+        /// Sherlock slug
+        slug: String,
+    },
     /// Submit a task flag
     Submit {
         /// Sherlock ID
@@ -107,6 +112,16 @@ pub async fn handle(
             let filename = crate::sanitize_filename(&format!("{slug}.zip"), &format!("{slug}.zip"));
             std::fs::write(&filename, &bytes)?;
             output::print_message(&format!("Downloaded {} ({} bytes)", filename, bytes.len()));
+        }
+
+        SherlockCommand::Tasks { slug } => {
+            let sherlock = client.sherlocks().info(&slug).await?;
+            let tasks = client.sherlocks().tasks(sherlock.id).await?;
+            if tasks.is_empty() {
+                output::print_message("No tasks found for this Sherlock.");
+            } else {
+                output::print_list(&tasks, format);
+            }
         }
 
         SherlockCommand::Submit { id, task_id, flag } => {

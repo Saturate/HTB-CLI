@@ -4,6 +4,7 @@ pub mod challenges;
 pub mod ctf;
 pub mod machines;
 pub mod pwnbox;
+pub mod rankings;
 pub mod search;
 pub mod seasons;
 pub mod sherlocks;
@@ -87,6 +88,11 @@ pub enum Command {
     Pwnbox {
         #[command(subcommand)]
         command: pwnbox::PwnboxCommand,
+    },
+    /// View global rankings
+    Rankings {
+        #[command(subcommand)]
+        command: rankings::RankingsCommand,
     },
     /// Interact with CTF events and challenges
     Ctf {
