@@ -36,6 +36,7 @@ jobs:
         with:
           version-pr: true
           version-pr-title: "Next Release"
+          token: ${{ steps.app-token.outputs.token }}
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
