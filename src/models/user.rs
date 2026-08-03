@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::deserialize_bool_or_null;
+use crate::output::Tabular;
 
 #[derive(Debug, Deserialize)]
 pub struct UserInfoResponse {
@@ -83,6 +84,50 @@ pub struct UserProfile {
     pub is_dedicated_vip: bool,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct UserActivityResponse {
+    pub data: Vec<ActivityEntry>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityEntry {
+    pub id: u64,
+    pub name: String,
+    #[serde(rename = "type")]
+    pub activity_type: String,
+    #[serde(default)]
+    pub points: u32,
+    #[serde(default)]
+    pub blood: bool,
+    #[serde(default)]
+    pub own_date: Option<String>,
+    #[serde(default)]
+    pub category_name: Option<String>,
+}
+
+impl Tabular for ActivityEntry {
+    fn headers() -> Vec<&'static str> {
+        vec!["Type", "Name", "Category", "Points", "Blood", "Date"]
+    }
+
+    fn row(&self) -> Vec<String> {
+        let date = self
+            .own_date
+            .as_deref()
+            .and_then(|d| d.split('T').next())
+            .unwrap_or("-");
+        vec![
+            self.activity_type.clone(),
+            self.name.clone(),
+            self.category_name.clone().unwrap_or_default(),
+            self.points.to_string(),
+            if self.blood { "✓" } else { "" }.to_string(),
+            date.to_string(),
+        ]
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -102,6 +147,20 @@ mod tests {
         let resp: UserInfoResponse = serde_json::from_str(json).unwrap();
         assert!(resp.info.can_access_vip);
         assert!(resp.info.is_vip);
+    }
+
+    #[test]
+    fn deserialize_user_activity() {
+        let json = include_str!("../../tests/fixtures/user-activity.json");
+        let resp: UserActivityResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(resp.data.len(), 3);
+        assert_eq!(resp.data[0].activity_type, "root");
+        assert_eq!(resp.data[0].name, "Cohort");
+        assert_eq!(resp.data[0].points, 20);
+        assert!(!resp.data[0].blood);
+        assert_eq!(resp.data[2].activity_type, "challenge");
+        assert!(resp.data[2].blood);
+        assert_eq!(resp.data[2].category_name.as_deref(), Some("Web"));
     }
 
     #[test]
