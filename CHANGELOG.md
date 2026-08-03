@@ -1,4 +1,13 @@
 # Changelog
+
+## 0.2.0 - 2026-08-03
+
+
+
+#### Add user activity command
+
+`htb user activity` shows recent owns and solves. Supports looking up other users by name or ID with `htb user activity <user>`.
+
 ## 0.1.12 (2026-08-03)
 
 ### Features
