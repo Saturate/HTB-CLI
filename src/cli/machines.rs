@@ -204,13 +204,18 @@ pub async fn handle(
 
         MachineCommand::Submit { name_or_id, flag } => {
             let machine = client.machines().profile(&name_or_id).await?;
-            // difficulty field from the machine profile (0-100 scale)
             let difficulty = machine.difficulty.unwrap_or(50);
-            let resp = client
+            match client
                 .machines()
                 .submit_flag(machine.id, &flag, difficulty)
-                .await?;
-            output::print_message(&resp.message);
+                .await
+            {
+                Ok(resp) => output::print_message(&resp.message),
+                Err(e) => {
+                    eprintln!("ERROR: Flag not submitted for {}!", machine.name);
+                    return Err(e.into());
+                }
+            }
         }
 
         MachineCommand::Extend { name_or_id } => {
