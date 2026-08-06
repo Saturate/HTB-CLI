@@ -50,7 +50,10 @@ impl MachineApi<'_> {
         flag: &str,
     ) -> Result<ActionResponse, HtbError> {
         self.0
-            .post("/api/v5/machine/own", &json!({"id": machine_id, "flag": flag}))
+            .post(
+                "/api/v5/machine/own",
+                &json!({"id": machine_id, "flag": flag}),
+            )
             .await
     }
 
