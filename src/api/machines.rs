@@ -48,13 +48,9 @@ impl MachineApi<'_> {
         &self,
         machine_id: u64,
         flag: &str,
-        difficulty: u32,
     ) -> Result<ActionResponse, HtbError> {
         self.0
-            .post(
-                &format!("/api/v4/machine/{machine_id}/flag"),
-                &json!({"flag": flag, "difficulty": difficulty}),
-            )
+            .post("/api/v5/machine/own", &json!({"id": machine_id, "flag": flag}))
             .await
     }
 

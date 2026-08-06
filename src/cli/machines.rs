@@ -204,12 +204,7 @@ pub async fn handle(
 
         MachineCommand::Submit { name_or_id, flag } => {
             let machine = client.machines().profile(&name_or_id).await?;
-            let difficulty = machine.difficulty.unwrap_or(50);
-            match client
-                .machines()
-                .submit_flag(machine.id, &flag, difficulty)
-                .await
-            {
+            match client.machines().submit_flag(machine.id, &flag).await {
                 Ok(resp) => output::print_message(&resp.message),
                 Err(e) => {
                     eprintln!("ERROR: Flag not submitted for {}!", machine.name);

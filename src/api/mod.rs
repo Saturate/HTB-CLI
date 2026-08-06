@@ -242,7 +242,7 @@ impl HtbClient {
         if path.contains("/vm/spawn")
             || path.contains("/vm/terminate")
             || path.contains("/vm/reset")
-            || (path.contains("/machine/") && path.contains("/flag"))
+            || path.contains("/machine/own")
             || path.contains("/machine/todo")
         {
             cache.invalidate_pattern("api_v4_machine");
