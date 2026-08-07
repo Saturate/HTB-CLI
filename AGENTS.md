@@ -2,6 +2,14 @@
 
 Rust CLI for [Hack The Box](https://hackthebox.com). Instructions for AI agents (Claude Code, Copilot, Cursor, etc.) working on this codebase.
 
+## Setup
+
+```bash
+git config core.hooksPath .githooks
+```
+
+This enables the pre-commit hook that runs `cargo fmt --check` before every commit.
+
 ## Build and test
 
 ```bash
