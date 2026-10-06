@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.3.0 - 2026-10-06
+
+#### MCP server: add missing machine, sherlock, and VPN tools
+
+Added submit_machine_flag, start_machine, stop_machine, reset_machine, extend_machine,
+stop_challenge, list_sherlocks, get_sherlock_info, submit_sherlock_flag, and vpn_status
+to the MCP server. Agents using the HTB MCP server can now submit machine flags and
+manage machine lifecycle without falling back to raw API calls.
+
+#### Use v5 endpoint for machine flag submission
+
+Switched from `POST /api/v4/machine/{id}/flag` to `POST /api/v5/machine/own`,
+matching the current HTB web app. The old endpoint didn't work for seasonal
+machines. The `difficulty` parameter is no longer sent.
+
+#### Fix season machine listings crashing on unrevealed machines
+
+Season endpoints return placeholder entries for machines not yet revealed (no id or name).
+These are now filtered out instead of causing a deserialization error.
+
+#### Lower cache TTL for detail endpoints
+
+Machine, challenge, and sherlock detail endpoints now cache for 30 seconds
+instead of 60 minutes so solve counts, ratings, and active player data stay
+fresh.
+
+#### Security: update h2 and rustls
+
+h2 0.4.15 -> 0.4.19 (RUSTSEC-2026-0258), rustls 0.23.42 -> 0.23.45 (RUSTSEC-2026-0285).
+
 ## 0.2.0 - 2026-08-03
 
 
