@@ -14,7 +14,7 @@ impl SeasonApi<'_> {
             .0
             .get(&format!("/api/v4/season/machines/{season_id}"))
             .await?;
-        Ok(resp.data)
+        Ok(resp.data.into_iter().filter(|m| m.id.is_some()).collect())
     }
 
     pub async fn leaderboard(

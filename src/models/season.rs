@@ -83,8 +83,10 @@ pub struct SeasonMachinesResponse {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SeasonMachine {
-    pub id: u64,
-    pub name: String,
+    #[serde(default)]
+    pub id: Option<u64>,
+    #[serde(default)]
+    pub name: Option<String>,
     #[serde(default)]
     pub os: Option<String>,
     #[serde(default)]
@@ -123,8 +125,8 @@ impl Tabular for SeasonMachine {
 
     fn row(&self) -> Vec<String> {
         vec![
-            self.id.to_string(),
-            self.name.clone(),
+            self.id.map(|i| i.to_string()).unwrap_or_default(),
+            self.name.clone().unwrap_or_default(),
             self.os.clone().unwrap_or_default(),
             self.difficulty_text
                 .clone()
@@ -255,8 +257,15 @@ mod tests {
     fn deserialize_season_machines() {
         let json = include_str!("../../tests/fixtures/season-machines.json");
         let resp: SeasonMachinesResponse = serde_json::from_str(json).unwrap();
-        assert!(!resp.data.is_empty());
+        assert_eq!(resp.data.len(), 4);
         assert_eq!(resp.data[0].os.as_deref(), Some("Linux"));
+
+        let unknown = &resp.data[2];
+        assert!(unknown.id.is_none());
+        assert!(unknown.name.is_none());
+
+        let known: Vec<_> = resp.data.iter().filter(|m| m.id.is_some()).collect();
+        assert_eq!(known.len(), 3);
     }
 
     #[test]

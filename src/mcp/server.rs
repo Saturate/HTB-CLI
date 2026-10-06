@@ -40,7 +40,7 @@ pub struct ChallengeInfoParams {
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-pub struct SubmitFlagParams {
+pub struct SubmitChallengeFlagParams {
     #[schemars(description = "Challenge ID (numeric)")]
     pub challenge_id: u64,
     #[schemars(description = "The flag string (e.g. 'HTB{...}')")]
@@ -48,15 +48,45 @@ pub struct SubmitFlagParams {
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-pub struct StartChallengeParams {
+pub struct ChallengeIdParams {
     #[schemars(description = "Challenge ID (numeric)")]
     pub challenge_id: u64,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct SubmitMachineFlagParams {
+    #[schemars(description = "Machine name or numeric ID")]
+    pub name_or_id: String,
+    #[schemars(description = "The flag hash string")]
+    pub flag: String,
 }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub struct SearchParams {
     #[schemars(description = "Search query")]
     pub query: String,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct ListSherlocksParams {
+    #[schemars(description = "Page number (default 1)")]
+    pub page: Option<u32>,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct SherlockInfoParams {
+    #[schemars(description = "Sherlock slug (URL name)")]
+    pub slug: String,
+}
+
+#[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
+pub struct SubmitSherlockFlagParams {
+    #[schemars(description = "Sherlock ID (numeric)")]
+    pub sherlock_id: u64,
+    #[schemars(description = "Task ID within the Sherlock (numeric)")]
+    pub task_id: u64,
+    #[schemars(description = "The answer string")]
+    pub flag: String,
 }
 
 #[derive(Clone)]
@@ -237,7 +267,7 @@ impl HtbMcp {
     #[tool(description = "Start a challenge container instance. Returns the instance ID.")]
     async fn start_challenge(
         &self,
-        Parameters(params): Parameters<StartChallengeParams>,
+        Parameters(params): Parameters<ChallengeIdParams>,
     ) -> Result<String, String> {
         let resp = self
             .client
@@ -248,15 +278,135 @@ impl HtbMcp {
         to_json(&resp)
     }
 
+    #[tool(description = "Stop a running challenge container instance.")]
+    async fn stop_challenge(
+        &self,
+        Parameters(params): Parameters<ChallengeIdParams>,
+    ) -> Result<String, String> {
+        let resp = self
+            .client
+            .challenges()
+            .stop(params.challenge_id)
+            .await
+            .map_err(|e| e.to_string())?;
+        to_json(&resp)
+    }
+
     #[tool(description = "Submit a flag for a challenge. Returns whether the flag was correct.")]
     async fn submit_challenge_flag(
         &self,
-        Parameters(params): Parameters<SubmitFlagParams>,
+        Parameters(params): Parameters<SubmitChallengeFlagParams>,
     ) -> Result<String, String> {
         let resp = self
             .client
             .challenges()
             .submit_flag(params.challenge_id, &params.flag)
+            .await
+            .map_err(|e| e.to_string())?;
+        to_json(&resp)
+    }
+
+    #[tool(
+        description = "Submit a flag for a machine (user or root). Resolves machine by name or ID."
+    )]
+    async fn submit_machine_flag(
+        &self,
+        Parameters(params): Parameters<SubmitMachineFlagParams>,
+    ) -> Result<String, String> {
+        let machine = self
+            .client
+            .machines()
+            .profile(&params.name_or_id)
+            .await
+            .map_err(|e| e.to_string())?;
+        let resp = self
+            .client
+            .machines()
+            .submit_flag(machine.id, &params.flag)
+            .await
+            .map_err(|e| e.to_string())?;
+        to_json(&resp)
+    }
+
+    #[tool(description = "Spawn/start a machine instance. Resolves machine by name or ID.")]
+    async fn start_machine(
+        &self,
+        Parameters(params): Parameters<MachineInfoParams>,
+    ) -> Result<String, String> {
+        let machine = self
+            .client
+            .machines()
+            .profile(&params.name_or_id)
+            .await
+            .map_err(|e| e.to_string())?;
+        let resp = self
+            .client
+            .machines()
+            .start(machine.id)
+            .await
+            .map_err(|e| e.to_string())?;
+        to_json(&resp)
+    }
+
+    #[tool(
+        description = "Stop a running machine instance. Resolves machine by name or ID, or stops the active machine if omitted."
+    )]
+    async fn stop_machine(
+        &self,
+        Parameters(params): Parameters<MachineInfoParams>,
+    ) -> Result<String, String> {
+        let machine = self
+            .client
+            .machines()
+            .profile(&params.name_or_id)
+            .await
+            .map_err(|e| e.to_string())?;
+        let resp = self
+            .client
+            .machines()
+            .stop(machine.id)
+            .await
+            .map_err(|e| e.to_string())?;
+        to_json(&resp)
+    }
+
+    #[tool(description = "Reset a machine instance. Resolves machine by name or ID.")]
+    async fn reset_machine(
+        &self,
+        Parameters(params): Parameters<MachineInfoParams>,
+    ) -> Result<String, String> {
+        let machine = self
+            .client
+            .machines()
+            .profile(&params.name_or_id)
+            .await
+            .map_err(|e| e.to_string())?;
+        let resp = self
+            .client
+            .machines()
+            .reset(machine.id)
+            .await
+            .map_err(|e| e.to_string())?;
+        to_json(&resp)
+    }
+
+    #[tool(
+        description = "Extend the expiration timer on a running machine. Resolves by name or ID."
+    )]
+    async fn extend_machine(
+        &self,
+        Parameters(params): Parameters<MachineInfoParams>,
+    ) -> Result<String, String> {
+        let machine = self
+            .client
+            .machines()
+            .profile(&params.name_or_id)
+            .await
+            .map_err(|e| e.to_string())?;
+        let resp = self
+            .client
+            .machines()
+            .extend(machine.id)
             .await
             .map_err(|e| e.to_string())?;
         to_json(&resp)
@@ -276,6 +426,75 @@ impl HtbMcp {
         }
     }
 
+    #[tool(
+        description = "List Sherlocks (blue-team investigation labs). Returns name, difficulty, category, solves, and completion status."
+    )]
+    async fn list_sherlocks(
+        &self,
+        Parameters(params): Parameters<ListSherlocksParams>,
+    ) -> Result<String, String> {
+        let page = params.page.unwrap_or(1);
+        let result = self
+            .client
+            .sherlocks()
+            .list(page, 100)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let summary: Vec<serde_json::Value> = result
+            .data
+            .iter()
+            .map(|s| {
+                serde_json::json!({
+                    "id": s.id,
+                    "name": s.name,
+                    "difficulty": s.difficulty,
+                    "category": s.category_name,
+                    "solves": s.solves,
+                    "rating": s.rating,
+                    "progress": s.progress,
+                    "owned": s.is_owned,
+                    "state": s.state,
+                })
+            })
+            .collect();
+
+        to_json(&serde_json::json!({
+            "sherlocks": summary,
+            "page": result.meta.current_page,
+            "total_pages": result.meta.last_page,
+            "total": result.meta.total,
+        }))
+    }
+
+    #[tool(description = "Get detailed information about a Sherlock by slug name.")]
+    async fn get_sherlock_info(
+        &self,
+        Parameters(params): Parameters<SherlockInfoParams>,
+    ) -> Result<String, String> {
+        let sherlock = self
+            .client
+            .sherlocks()
+            .info(&params.slug)
+            .await
+            .map_err(|e| e.to_string())?;
+        to_json(&sherlock)
+    }
+
+    #[tool(description = "Submit an answer for a Sherlock task.")]
+    async fn submit_sherlock_flag(
+        &self,
+        Parameters(params): Parameters<SubmitSherlockFlagParams>,
+    ) -> Result<String, String> {
+        let resp = self
+            .client
+            .sherlocks()
+            .submit_flag(params.sherlock_id, params.task_id, &params.flag)
+            .await
+            .map_err(|e| e.to_string())?;
+        to_json(&resp)
+    }
+
     #[tool(description = "List all seasons and show which is currently active.")]
     async fn list_seasons(&self) -> Result<String, String> {
         let seasons = self
@@ -285,6 +504,17 @@ impl HtbMcp {
             .await
             .map_err(|e| e.to_string())?;
         to_json(&seasons)
+    }
+
+    #[tool(description = "Show VPN connection status for the authenticated user.")]
+    async fn vpn_status(&self) -> Result<String, String> {
+        let connections = self
+            .client
+            .vpn()
+            .connections()
+            .await
+            .map_err(|e| e.to_string())?;
+        to_json(&connections)
     }
 
     #[tool(description = "Search across machines, challenges, and users on Hack The Box.")]
@@ -306,9 +536,13 @@ impl ServerHandler for HtbMcp {
             .with_server_info(Implementation::new("htb-cli", env!("CARGO_PKG_VERSION")))
             .with_instructions(
                 "HTB-CLI provides access to the Hack The Box platform. \
-                 Use get_user_profile to check auth, list_machines/list_challenges to browse content, \
-                 get_machine_info/get_challenge_info for details, start_challenge to spawn instances, \
-                 submit_challenge_flag to submit flags, and search to find content.",
+                 Use get_user_profile to check auth. \
+                 Machines: list_machines, get_machine_info, start_machine, stop_machine, \
+                 reset_machine, extend_machine, get_active_machine, submit_machine_flag. \
+                 Challenges: list_challenges, get_challenge_info, start_challenge, \
+                 stop_challenge, submit_challenge_flag. \
+                 Sherlocks: list_sherlocks, get_sherlock_info, submit_sherlock_flag. \
+                 Other: list_seasons, vpn_status, search.",
             )
     }
 }
