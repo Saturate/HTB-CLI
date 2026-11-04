@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.2 - 2026-11-04
+
+#### Add missing serde defaults on optional fields
+
+Added `#[serde(default)]` to optional fields in `ActiveVmResponse`,
+`PaginationLinks`, and `PaginationMeta` that were missing the attribute.
+Prevents deserialization failures when the HTB API omits a key entirely
+instead of returning null.
+
 ## 0.3.1 - 2026-11-04
 
 #### Update dependencies
