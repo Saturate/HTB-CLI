@@ -39,18 +39,24 @@ pub struct Paginated<T> {
 
 #[derive(Debug, Deserialize)]
 pub struct PaginationLinks {
+    #[serde(default)]
     pub first: Option<String>,
+    #[serde(default)]
     pub last: Option<String>,
+    #[serde(default)]
     pub prev: Option<String>,
+    #[serde(default)]
     pub next: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct PaginationMeta {
     pub current_page: u32,
+    #[serde(default)]
     pub from: Option<u32>,
     pub last_page: u32,
     pub per_page: u32,
+    #[serde(default)]
     pub to: Option<u32>,
     pub total: u32,
 }

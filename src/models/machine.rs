@@ -75,6 +75,7 @@ pub struct Label {
 
 #[derive(Debug, Deserialize)]
 pub struct ActiveVmResponse {
+    #[serde(default)]
     pub info: Option<ActiveVmInfo>,
 }
 
