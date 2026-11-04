@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 - 2026-11-04
+
+#### Update dependencies
+
+Bump rpassword from v5 to v7 and update lockfile to resolve 12 security
+advisories in transitive dependencies (quinn-proto, rustls, rustls-webpki,
+webpki-roots, tokio, chacha20).
+
 ## 0.3.0 - 2026-10-06
 
 #### MCP server: add missing machine, sherlock, and VPN tools
